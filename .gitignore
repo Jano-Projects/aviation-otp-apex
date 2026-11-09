@@ -1,0 +1,17 @@
+# Local settings and secrets
+.env
+.secrets/
+
+# Patch files received for local fixes
+*.patch
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
