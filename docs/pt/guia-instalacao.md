@@ -41,32 +41,26 @@ cd aviation-otp-apex
 
 Não é preciso ambiente Python próprio: o `apex.py` só usa a biblioteca padrão do Python.
 
-## Bloco 4. Subir o ORDS (primeira vez: 15 a 30 minutos)
+## Bloco 4. Instalar o APEX e o ORDS e subir (primeira vez: 20 a 30 minutos)
 
 ```bash
 python3 apex.py up
 ```
 
-**Deve ver:** primeiro o download da imagem do ORDS (cerca de 1 GB), depois a mensagem `First start: it installs ORDS and APEX...` e uma linha `... N min` a cada 15 segundos, enquanto o ORDS instala o próprio ORDS e o APEX dentro da base. Termina com `ORDS is ready: http://localhost:8181/ords/`.
+Na primeira vez, o `up` faz quatro coisas, cada uma com a sua mensagem:
 
-Confirma noutro terminal que a imagem é a fixada no projeto e que não há erros:
+1. `Downloading Oracle APEX 24.2`: descarrega os ficheiros de instalação do APEX (cerca de 200 MB, do site da Oracle) para `.cache/`, confere o checksum e descompacta.
+2. `Installing Oracle APEX 24.2 into the database`: corre o script oficial `apexins.sql` dentro da base. Demora 10 a 20 minutos e mostra `... N min` a cada 30 segundos; o registo completo fica em `.cache/apexins.log`.
+3. `Installing ORDS into the database`: o `ords install` cria os utilizadores do ORDS na base, liga o APEX (*PL/SQL gateway*) e grava a configuração no volume `otp-apex_ords_config`.
+4. `Starting ORDS`: liga o contentor e espera que responda.
 
-```bash
-docker inspect --format '{{.Config.Image}}' otp-ords
-docker logs --tail 10 otp-ords
-```
+**Deve ver no fim:** `ORDS is ready: http://localhost:8181/ords/`.
 
-A imagem tem de terminar em `ords:24.4.0` (ver *Porquê a versão 24.4.0* abaixo).
-
-O que está a acontecer: o `apex.py` grava a ligação à base (`CONN_STRING`) num ficheiro em `.secrets/`, o contentor lê esse ficheiro, instala tudo e apaga-o. Nas vezes seguintes o `up` demora segundos, porque a configuração fica guardada no volume `otp-apex_ords_config`.
+Cada passo verifica primeiro o estado real (o APEX está instalado? a configuração existe?), por isso, se o `up` for interrompido, basta corrê-lo de novo: continua onde parou. Nas vezes seguintes demora segundos.
 
 **Porquê a versão 24.4.0.** As imagens mais recentes do ORDS usam o Oracle Linux 10, que exige um processador com instruções AVX2 (o nível *x86-64-v3*). Muitas VMs do VirtualBox não as têm, sobretudo quando o Windows do computador tem o Hyper-V ligado. Para saber se a tua tem: `grep -c avx2 /proc/cpuinfo` (`0` = não tem). A 24.4.0 funciona com ou sem AVX2; quem tiver AVX2 pode usar outra versão mudando `ORDS_IMAGE` no `.env`.
 
-Para acompanhar a instalação noutro terminal:
-
-```bash
-cd ~/projetos/aviation-otp-apex && python3 apex.py logs
-```
+**Porquê instalar o APEX à parte.** A imagem `database/ords` só serve o ORDS: arranca vazia, na porta 8080, à espera de configuração. A imagem que fazia tudo sozinha (`database/ords-developer`) pede login no registo da Oracle. Instalar com os scripts oficiais (`apexins.sql` e `ords install`) dá o mesmo resultado, sem conta e sem depender de comportamento escondido na imagem.
 
 ## Bloco 5. Instalar a camada da aplicação
 
@@ -135,12 +129,13 @@ A ordem importa: o ORDS precisa da base ligada e da rede do Observatório.
 | Sintoma | Causa e solução |
 |---|---|
 | `network otp-observatory_default not found` | O Observatório não está ligado. `python3 tasks.py up` no outro repositório. |
-| `up` fica muito tempo em `...` | Normal na primeira vez (até 30 min). Vê o progresso com `python3 apex.py logs`. |
+| `up` fica muito tempo em `... N min` na instalação do APEX | Normal (10 a 20 min). O progresso está em `.cache/apexins.log` (`tail -f .cache/apexins.log` noutro terminal). |
+| `APEX was not installed` | As últimas linhas do registo aparecem no ecrã; o registo completo está em `.cache/apexins.log`. Corrige a causa e corre `python3 apex.py up` de novo. |
+| `Installing ORDS failed` | Confirma que `ORACLE_PASSWORD` no `.env` é igual ao do Observatório. Depois `python3 apex.py up` de novo. |
 | `ORA-20100` no install | O esquema estrela não existe. No Observatório: `python3 tasks.py install` e `python3 tasks.py mart`. |
-| `ORA-20101` no install | O APEX não ficou instalado. Vê `python3 apex.py logs`; se a instalação falhou, `python3 apex.py down`, `docker volume rm otp-apex_ords_config` e repete o bloco 4. |
+| `ORA-20101` no install | O APEX não está instalado. Corre `python3 apex.py up` primeiro. |
 | Página `404` em `/ords/otp/...` | O módulo REST não foi publicado. Repete o bloco 5. |
-| `Fatal glibc error: CPU does not support x86-64-v3` nos logs | A imagem do ORDS não é a 24.4.0. Confirma `ORDS_IMAGE` no `.env` (ou apaga essa linha para usar a do `docker-compose.yml`), depois `python3 apex.py down`, `docker volume rm otp-apex_ords_config` e o bloco 4. |
-| `up` só mostra `...` sem minutos e nunca acaba | Versão antiga do `apex.py`, que não detetava um primeiro arranque interrompido. `git pull`, depois `python3 apex.py down`, `docker volume rm otp-apex_ords_config` e o bloco 4. |
-| `Permission denied` em `/opt/oracle/variables` (Fedora) | O SELinux bloqueou a pasta `.secrets`. Confirma `:z` no fim dessa linha do `docker-compose.yml` (`git pull`). |
+| Páginas do APEX sem estilos nem ícones | O ORDS não encontra os ficheiros estáticos. Confirma que existe `.cache/apex/images` e que o `docker-compose.yml` monta essa pasta com `:ro,z`. |
+| `Fatal glibc error: CPU does not support x86-64-v3` nos logs | A imagem do ORDS não é a 24.4.0. Confirma `ORDS_IMAGE` no `.env` (ou apaga essa linha para usar a do `docker-compose.yml`) e corre `python3 apex.py up` de novo. |
 | `permission denied ... docker.sock` | O teu utilizador ainda não está no grupo `docker` desta sessão. Confirma com `groups`; se não aparecer, reinicia a máquina. |
 | A VM fica lenta | Pouca RAM. Aumenta a memória da VM ou desliga outras aplicações. |

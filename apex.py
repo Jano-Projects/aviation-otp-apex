@@ -3,7 +3,7 @@
 
 Needs the database of aviation-otp-observatory running (python tasks.py up there).
 
-    python apex.py up        start ORDS; the first time it installs ORDS and APEX (15-30 min)
+    python apex.py up        start ORDS; the first time it installs APEX and ORDS (20-30 min)
     python apex.py install   schema OTP_APP, views, API package, REST API, APEX workspace
     python apex.py check     call the REST API and print what it returns
     python apex.py refresh   rebuild the star schema through the REST API (POST)
@@ -18,23 +18,31 @@ Run "python apex.py <command> --help" for options.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
-import os
 import shutil
 import subprocess
 import sys
 import time
 import urllib.error
 import urllib.request
+import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 ENV_FILE = ROOT / ".env"
 ENV_EXAMPLE = ROOT / ".env.example"
-SECRETS_DIR = ROOT / ".secrets"
+CACHE_DIR = ROOT / ".cache"
 NETWORK = "otp-observatory_default"
 CONFIG_VOLUME = "otp-apex_ords_config"
 APEX_DIR = ROOT / "apex"
+
+# Oracle APEX 24.2, English only (public download, Oracle Free Use Terms).
+# Pinned with its checksum, like the ORDS image: the same version on every machine.
+APEX_ZIP_URL = "https://download.oracle.com/otn_software/apex/apex_24.2_en.zip"
+APEX_ZIP_SHA256 = "94e6a624cfe80272041094543c6ccd56b87333d8ad856100802a1cb0f91cd42d"
+APEX_ZIP = CACHE_DIR / "apex_24.2_en.zip"
+APEX_FILES = CACHE_DIR / "apex"          # unzipped; images/ is served by ORDS as /i/
 
 
 def app_export() -> Path | None:
@@ -145,45 +153,115 @@ def ords_configured(cfg: dict[str, str]) -> bool:
     return run(probe, capture_output=True).returncode == 0
 
 
+def sql_value(cfg: dict[str, str], query: str) -> str:
+    """Runs one query as SYS and returns its single value as text."""
+    result = sqlplus(cfg, sys_logon(cfg),
+                     "set heading off feedback off pagesize 0 verify off\n" + query + ";\nexit\n",
+                     capture=True)
+    check(result, "Query")
+    return result.stdout.strip()
+
+
+def apex_installed(cfg: dict[str, str]) -> bool:
+    return sql_value(cfg, "select count(*) from dba_registry "
+                          "where comp_id = 'APEX' and status = 'VALID'") == "1"
+
+
+def ensure_apex_files() -> None:
+    """Downloads (once) and unzips the APEX installation files into .cache/apex."""
+    if (APEX_FILES / "apexins.sql").exists() and (APEX_FILES / "images").is_dir():
+        return
+    CACHE_DIR.mkdir(exist_ok=True)
+    if not APEX_ZIP.exists():
+        info(f"Downloading Oracle APEX 24.2 (about 200 MB): {APEX_ZIP_URL}")
+        partial = APEX_ZIP.with_suffix(".part")
+        with urllib.request.urlopen(APEX_ZIP_URL, timeout=120) as response, open(partial, "wb") as out:
+            shutil.copyfileobj(response, out, length=1024 * 1024)
+        partial.rename(APEX_ZIP)
+    digest = hashlib.sha256()
+    with open(APEX_ZIP, "rb") as handle:
+        for block in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(block)
+    if digest.hexdigest() != APEX_ZIP_SHA256:
+        APEX_ZIP.unlink()
+        fail("The APEX download is corrupted (checksum mismatch). Run the command again.")
+    info("Unzipping APEX")
+    with zipfile.ZipFile(APEX_ZIP) as archive:
+        archive.extractall(CACHE_DIR)      # creates .cache/apex/
+
+
+def install_apex(cfg: dict[str, str]) -> None:
+    """Installs APEX into FREEPDB1 with Oracle's own script, apexins.sql (10-20 minutes)."""
+    db = cfg.get("DB_CONTAINER", "otp-oracle")
+    info("Installing Oracle APEX 24.2 into the database (10-20 minutes, no output until the end)")
+    run(["docker", "exec", "-u", "root", db, "rm", "-rf", "/tmp/apex"])
+    check(run(["docker", "cp", str(APEX_FILES), f"{db}:/tmp/apex"]), "Copying the APEX files")
+    # apexins.sql writes its log next to itself: the database user must be able to write there.
+    check(run(["docker", "exec", "-u", "root", db, "chmod", "-R", "a+rwX", "/tmp/apex"]),
+          "Preparing the APEX files")
+    started = time.monotonic()
+    log_file = CACHE_DIR / "apexins.log"
+    with open(log_file, "w", encoding="utf-8") as log:
+        process = subprocess.Popen(
+            ["docker", "exec", "-i", "-w", "/tmp/apex", db, "sqlplus", "-s", "-L", sys_logon(cfg)],
+            cwd=ROOT, stdin=subprocess.PIPE, stdout=log, stderr=subprocess.STDOUT, text=True)
+        process.stdin.write("@apexins.sql SYSAUX SYSAUX TEMP /i/\nexit\n")
+        process.stdin.close()
+        while process.poll() is None:
+            time.sleep(30)
+            print(f"   ... {int((time.monotonic() - started) // 60)} min "
+                  f"(log: .cache/apexins.log)", flush=True)
+    run(["docker", "exec", "-u", "root", db, "rm", "-rf", "/tmp/apex"])
+    if not apex_installed(cfg):
+        print("".join(log_file.read_text(encoding="utf-8", errors="replace").splitlines(True)[-40:]))
+        fail("APEX was not installed. The end of .cache/apexins.log is above.")
+    # ORDS runs APEX pages as APEX_PUBLIC_USER, through a proxy connection.
+    check(sqlplus(cfg, sys_logon(cfg), "alter user apex_public_user account unlock;\nexit\n", capture=True),
+          "Unlocking APEX_PUBLIC_USER")
+    print(f"   APEX installed in {int((time.monotonic() - started) // 60)} min.")
+
+
+def install_ords(cfg: dict[str, str]) -> None:
+    """Installs ORDS into the database and writes its configuration into the volume."""
+    info("Installing ORDS into the database and configuring it (2-5 minutes)")
+    command = (
+        'ORDS=$(command -v ords || echo /opt/oracle/ords/bin/ords); '
+        '"$ORDS" --config /etc/ords/config install '
+        '--admin-user SYS --proxy-user '
+        '--db-hostname oracle --db-port 1521 --db-servicename FREEPDB1 '
+        '--gateway-mode proxied --gateway-user APEX_PUBLIC_USER '
+        '--feature-sdw true --password-stdin '
+        '&& "$ORDS" --config /etc/ords/config config set standalone.static.path /opt/oracle/apex/images'
+    )
+    passwords = f"{cfg['ORACLE_PASSWORD']}\n{cfg.get('ORDS_PUBLIC_PASSWORD', 'Ords_Public_2026')}\n"
+    check(run(["docker", "compose", "run", "--rm", "--no-deps", "-T", "--entrypoint", "bash",
+               "ords", "-c", command], input=passwords, text=True),
+          "Installing ORDS")
+
+
 # --------------------------------------------------------------------------- commands
 def cmd_up(args: argparse.Namespace) -> None:
     cfg = env()
     require_database(cfg)
 
-    # Not "does the volume exist": an interrupted first start leaves the volume behind
-    # without any configuration, and ORDS would then wait forever for a connection.
-    first_time = not ords_configured(cfg)
-    if first_time:
-        # ORDS reads the connection once, installs ORDS and APEX, then deletes the file.
-        SECRETS_DIR.mkdir(exist_ok=True)
-        os.chmod(SECRETS_DIR, 0o777)  # the container user must be able to delete the file
-        conn = SECRETS_DIR / "conn_string.txt"
-        conn.write_text(f"CONN_STRING=sys/{cfg['ORACLE_PASSWORD']}@oracle:1521/FREEPDB1\n", encoding="utf-8")
-        os.chmod(conn, 0o666)
-        info("Starting ORDS. First start: it installs ORDS and APEX into the database (15-30 minutes)")
-        print("   Follow the installation in another terminal with: python apex.py logs")
-    else:
-        SECRETS_DIR.mkdir(exist_ok=True)
-        info("Starting ORDS")
+    # Each step checks the real state, so an interrupted first start simply resumes.
+    ensure_apex_files()
+    if not apex_installed(cfg):
+        install_apex(cfg)
+    if not ords_configured(cfg):
+        install_ords(cfg)
 
+    info("Starting ORDS")
     check(run(["docker", "compose", "up", "-d"]), "docker compose up")
 
     started = time.monotonic()
     deadline = started + args.timeout
-    hinted = False
     while time.monotonic() < deadline:
         if ords_answers(cfg):
-            leftover = SECRETS_DIR / "conn_string.txt"
-            if leftover.exists():
-                leftover.unlink()
             info(f"ORDS is ready: {base_url(cfg)}/")
             return
-        time.sleep(15)
-        minutes = int((time.monotonic() - started) // 60)
-        print(f"   ... {minutes} min", flush=True)
-        if not first_time and minutes >= 3 and not hinted:
-            hinted = True
-            print("   ORDS should start in seconds once installed. See why with: python apex.py logs")
+        time.sleep(10)
+        print(f"   ... {int((time.monotonic() - started) // 60)} min", flush=True)
     fail(f"ORDS did not answer after {args.timeout}s. See: python apex.py logs")
 
 
@@ -288,7 +366,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="command", required=True)
 
-    p = sub.add_parser("up", help="start ORDS (first time: install ORDS and APEX)")
+    p = sub.add_parser("up", help="start ORDS (first time: install APEX and ORDS)")
     p.add_argument("--timeout", type=int, default=3600, help="seconds to wait for ORDS (default 3600)")
     p.set_defaults(func=cmd_up)
 

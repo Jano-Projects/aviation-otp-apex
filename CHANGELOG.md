@@ -6,7 +6,10 @@ All notable changes to this project. The format follows
 ## [Unreleased]
 
 ### Added
-- ORDS + APEX container on the observatory's Docker network, started by `python apex.py up`.
+- `python apex.py up`: downloads Oracle APEX 24.2 (checksum-verified), installs it with
+  `apexins.sql`, installs ORDS with `ords install` (PL/SQL gateway for APEX) and starts the ORDS
+  container on the observatory's Docker network. Each step checks the real state, so an
+  interrupted first start resumes.
 - Schema `OTP_APP` with read grants on the observatory's star schema and `EXECUTE` on `pkg_mart`.
 - Indicator views with additive measures; `pkg_app_api` (`to_month`, `refresh_mart`).
 - REST API `/ords/otp/api/v1/`: months, airlines, airports, hours, weekdays, runs, `POST mart/refresh`.
@@ -18,4 +21,8 @@ All notable changes to this project. The format follows
   VirtualBox VMs do not expose (`Fatal glibc error: CPU does not support x86-64-v3`).
 - `apex.py up` detects an interrupted first start (configuration volume left empty) and passes
   the database connection again, instead of waiting forever; progress shows elapsed minutes.
-- Fedora and other SELinux hosts: `.secrets` is mounted with the `z` label.
+- Fedora and other SELinux hosts: folders shared with the container are mounted with the `z` label.
+- The plain `database/ords` image does not read `conn_string.txt` nor install anything (it
+  starts empty on port 8080); the image that did (`ords-developer`) now requires a registry
+  login. The `conn_string.txt` mechanism was replaced by the explicit install above, and the
+  host port maps to 8080.

@@ -1,21 +1,24 @@
-# Oracle REST Data Services (ORDS) with Oracle APEX, connected to the database
-# of the aviation-otp-observatory project. On its first start the container
-# installs ORDS and APEX into that database, then serves:
+# Oracle REST Data Services (ORDS) for Oracle APEX, connected to the database
+# of the aviation-otp-observatory project. "python apex.py up" installs APEX and
+# ORDS into that database the first time, then starts this container, which serves:
 #   http://localhost:8181/ords/          APEX and the REST API
 name: otp-apex
 
 services:
   ords:
+    # Plain ORDS image: it only serves. Installing APEX and ORDS is done by apex.py.
     image: ${ORDS_IMAGE:-container-registry.oracle.com/database/ords:24.4.0}
     container_name: otp-ords
     ports:
       # 127.0.0.1 only: the app and its API are not exposed to the local network.
-      - "127.0.0.1:${ORDS_PORT:-8181}:8181"
+      # ORDS listens on 8080 inside the container.
+      - "127.0.0.1:${ORDS_PORT:-8181}:8080"
     volumes:
-      # conn_string.txt (written by "python apex.py up"); the container deletes it after use.
-      - ./.secrets:/opt/oracle/variables:z
-      # ORDS configuration created on the first start, kept across restarts.
+      # ORDS configuration written by "ords install", kept across restarts.
       - ords_config:/etc/ords/config
+      # APEX static files (JavaScript, CSS, icons), served as /i/.
+      # ",z": SELinux label so the container may read the folder (Fedora).
+      - ./.cache/apex/images:/opt/oracle/apex/images:ro,z
     networks:
       - otp
 

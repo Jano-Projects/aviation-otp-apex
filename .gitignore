@@ -1,6 +1,8 @@
 # Local settings and secrets
 .env
-.secrets/
+
+# APEX installation files, downloaded by "python apex.py up"
+.cache/
 
 # Patch files received for local fixes
 *.patch
