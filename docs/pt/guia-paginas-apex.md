@@ -2,7 +2,7 @@
 
 Este guia constrói a aplicação no App Builder, página a página. Cada região diz **onde clicar**, **o que preencher** e traz o **SQL pronto a colar**. No fim, a aplicação é exportada para a pasta `apex/` e passa a fazer parte do repositório.
 
-Pré-requisito: [guia de instalação](guia-instalacao.md) concluído (blocos 1 a 9) e sessão aberta no APEX com o utilizador `DEV`.
+Pré-requisito: [guia de instalação](guia-instalacao.md) concluído (blocos 1 a 8) e sessão aberta no APEX com o utilizador `DEV`.
 
 ## O que vamos construir
 
