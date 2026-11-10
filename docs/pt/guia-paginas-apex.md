@@ -4,6 +4,10 @@ Este guia constrói a aplicação no App Builder, página a página. Cada regiã
 
 Pré-requisito: [guia de instalação](guia-instalacao.md) concluído (blocos 1 a 8) e sessão aberta no APEX com o utilizador `DEV`.
 
+Testado com APEX 24.2. Os passos 1 a 3 foram feitos e conferidos assim; os restantes seguem o mesmo método.
+
+> **Atalho:** se o repositório já tem `apex/f100.sql`, o `python3 apex.py install` importa a aplicação feita até aí. Este guia serve para a construir de raiz, perceber cada peça ou continuar as páginas que faltam.
+
 ## O que vamos construir
 
 | Página | Nome | Conteúdo |
@@ -16,6 +20,27 @@ Pré-requisito: [guia de instalação](guia-instalacao.md) concluído (blocos 1 
 | 5 | Rotas | relatório interativo das rotas |
 | 6 | Cargas | histórico das cargas do Observatório |
 | 7 | Ações | reconstruir o esquema estrela |
+
+## Como é o Page Designer
+
+Quase tudo se faz no **Page Designer**, que abre quando se clica numa página. Tem três colunas:
+
+| Coluna | O que tem |
+|---|---|
+| Esquerda | A árvore da página. O primeiro separador (**Rendering**) tem as regiões, os itens e os botões; o separador do **raio** tem as ações dinâmicas (*Dynamic Actions*), agrupadas por evento. |
+| Meio | A disposição da página (*Layout*) e, por baixo, a galeria de regiões e itens que se podem arrastar. |
+| Direita | O **Property Editor**: as propriedades do que está selecionado à esquerda. Nas regiões de gráfico e de cartões tem dois separadores: **Region** (de onde vêm os dados) e **Attributes** (como se desenham). |
+
+Para criar qualquer coisa: botão direito no sítio certo da árvore (por exemplo **Body**) e **Create Region**, **Create Page Item** ou **Create Dynamic Action**. Depois preenche-se o Property Editor. No fim, **Save** (canto superior direito) e ▶ para correr.
+
+## Como os filtros chegam ao SQL
+
+1. O utilizador muda uma lista; o browser dispara o evento *Change*.
+2. A ação dinâmica **Aplicar filtros** apanha-o e faz *Submit Page*.
+3. O APEX guarda os valores na sessão (*session state*) com os nomes `P0_MONTH_FROM`, `P0_MONTH_TO`, `P0_LINE_TYPE`.
+4. A página é desenhada de novo; cada região corre o seu SQL e o APEX troca `:P0_LINE_TYPE` (e os outros) pelos valores da sessão.
+
+Se os filtros não mudarem nada, um destes elos falhou; a secção *Dicas*, no fim, diz como encontrar qual.
 
 ## A regra das percentagens
 
@@ -55,22 +80,28 @@ Mudar o nome da página 1 de Home para Painel: abrir a página 1, em **Page** > 
 
 ## Passo 2. Global Page (página 0): os filtros
 
-A página 0 é desenhada em todas as outras páginas. Os filtros ficam lá e cada região lê `:P0_...`.
+A página 0 é desenhada dentro de todas as outras páginas. Os filtros ficam lá e cada região lê `:P0_...`.
 
-1. Abrir a página **0 - Global Page** (se não existir: **Create Page** > **Global Page**).
-2. Criar uma região: botão direito em **Body** > **Create Region**.
-   - **Title:** `Filtros` · **Type:** `Static Content`
-   - **Appearance** > **Template:** `Buttons Container` (fica compacta)
-   - **Server-side Condition** > **Type:** `Current Page is NOT in comma delimited list` · **Value:** `6,7`
-3. Na região, criar três itens (botão direito > **Create Page Item**):
+### 2.1 A região "Filtros"
 
-| Item | Type | Label | List of Values |
+1. Abrir a página **0 - Global Page** (o assistente de criação já a cria; se não existir: **Create Page** > **Global Page**).
+2. Botão direito em **Body** > **Create Region**. À direita:
+   - **Identification > Title:** `Filtros` · **Type:** `Static Content`
+   - **Server-side Condition > Type:** `Current Page is NOT in Comma Delimited List` · **Pages:** `6,7,9999`
+
+A condição esconde os filtros nas páginas onde não fazem sentido: **9999** (Login), **6** (Cargas) e **7** (Ações). As páginas 6 e 7 ainda não existem neste ponto; uma condição que as menciona não dá erro e fica pronta para quando forem criadas.
+
+### 2.2 Os três itens
+
+Botão direito na região **Filtros** > **Create Page Item**, três vezes. O APEX dá o nome provisório `P0_NEW`; muda-se logo em **Name**.
+
+| Name | Type | Label | Layout > Start New Row |
 |---|---|---|---|
-| `P0_MONTH_FROM` | Select List | Mês inicial | SQL abaixo |
-| `P0_MONTH_TO` | Select List | Mês final | SQL abaixo |
-| `P0_LINE_TYPE` | Select List | Tipo de linha | Static: `Doméstico;N,Internacional;I,Cargueiro;C,Outros;G` |
+| `P0_MONTH_FROM` | Select List | Mês inicial | ligado |
+| `P0_MONTH_TO` | Select List | Mês final | desligado |
+| `P0_LINE_TYPE` | Select List | Tipo de linha | desligado |
 
-SQL da lista dos dois meses:
+Nos dois meses, **List of Values > Type** `SQL Query`:
 
 ```sql
 select month_label as d, month_label as r
@@ -78,19 +109,34 @@ select month_label as d, month_label as r
  order by month_start desc
 ```
 
-Em cada item: **List of Values** > **Display Extra Values** = Off, **Display Null Value** = On, **Null Display Value** = `(todos)`. Em **Layout**, pôr `Start New Row` = Off nos dois últimos, para ficarem lado a lado.
+No tipo de linha, **List of Values > Type** `Static Values`; clicar no campo **Static Values** abre uma grelha de pares *Display Value* / *Return Value*:
 
-4. Ação dinâmica: selecionar os três itens (Ctrl+clique) > botão direito > **Create Dynamic Action**.
-   - **Name:** `Aplicar filtros` · **Event:** `Change`
-   - Na ação **True**: **Action** = `Submit Page`.
+| Display Value | Return Value |
+|---|---|
+| Doméstico | N |
+| Internacional | I |
+| Cargueiro | C |
+| Outros | G |
 
-Assim, ao mudar qualquer filtro, a página recarrega com os novos valores em sessão e todas as regiões recalculam.
+Nos três itens: **Display Extra Values** desligado, **Display Null Value** ligado, **Null Display Value** `(todos)`. Confirmar também **Session State > Storage** = `Per Session (Persistent)` (é o valor por omissão).
+
+### 2.3 A ação dinâmica
+
+Sem ela, mudar uma lista não envia nada ao servidor e os números não mudam.
+
+1. Na coluna da esquerda, separador do **raio**. Botão direito em **Change** > **Create Dynamic Action**.
+2. Na ação nova, à direita:
+   - **Identification > Name:** `Aplicar filtros`
+   - **When > Event:** `Change` · **Selection Type:** `Item(s)` · **Item(s):** `P0_MONTH_FROM,P0_MONTH_TO,P0_LINE_TYPE`
+3. Na árvore, por baixo de **True**, clicar na ação **Show** e mudar **Identification > Action** para `Submit Page`.
+
+**Deve ver** (Save, ▶): o login sem filtros; depois de entrar, a caixa **Filtros** no topo do Painel. Ao escolher *Doméstico*, a página recarrega e a lista mantém *Doméstico*.
 
 ## Passo 3. Página 1, Painel
 
 ### 3.1 Indicadores-chave (Cards)
 
-Botão direito em **Body** > **Create Region**: **Title** `Indicadores`, **Type** `Cards`.
+Botão direito em **Body** > **Create Region**. Separador **Region**: **Title** `Indicadores`, **Type** `Cards`, **Source > Type** `SQL Query`, e o SQL:
 
 ```sql
 with f as (
@@ -111,11 +157,11 @@ select 4, 'Voos medidos', to_char(measurable, '999G999G990'), 'fa-check' from f
 order by 1
 ```
 
-Em **Attributes** da região: **Title** > Column = `VALUE`; **Subtitle** > Column = `LABEL`; **Icon and Badge** > Icon Source = `Icon Class Column`, Icon Column = `ICON`. **Grid** > Layout = `Horizontal (Row)`.
+Separador **Attributes**: **Appearance > Layout** = `Horizontal (Row)`; **Title > Column** = `VALUE`; **Subtitle > Column** = `LABEL`; **Icon and Badge > Icon Source** = `Icon Class Column`, **Icon Column** = `ICON`.
 
 ### 3.2 Pontualidade por mês (gráfico de linhas)
 
-**Create Region**: **Title** `Pontualidade por mês`, **Type** `Chart`. Na série criada automaticamente (**Series** > **New**):
+**Create Region**: **Title** `Pontualidade por mês`, **Type** `Chart`. Na árvore, por baixo da região, aparece **Series** com uma série **New**; clicar nela:
 
 - **Name:** `Pontualidade %` · **Type:** `Line`
 - **Source** > SQL:
@@ -132,7 +178,7 @@ select to_char(month_start, 'YYYY-MM') as month_label,
 ```
 
 - **Column Mapping:** Label = `MONTH_LABEL`, Value = `ON_TIME_PCT`.
-- No eixo **y** (Axes > y): **Title** `%`, **Minimum** `0`, **Maximum** `100`.
+- Na árvore, por baixo da região, **Axes** > **y**: **Title** `%`, **Minimum** `0`, **Maximum** `100`.
 
 ### 3.3 Voos e cancelamentos por mês (barras)
 
@@ -150,14 +196,14 @@ select to_char(month_start, 'YYYY-MM') as month_label,
  order by month_start
 ```
 
-- Série 1: **Name** `Realizados`, Value = `REALIZED`. Série 2: **Name** `Cancelados`, Value = `CANCELLED`. Label = `MONTH_LABEL` nas duas.
-- Na região (Attributes): **Stack** = On.
+- Série 1 (a **New**): **Name** `Realizados`, Value = `REALIZED`. Série 2 (botão direito em **Series** > **Create Series**): **Name** `Cancelados`, Value = `CANCELLED`. Label = `MONTH_LABEL` nas duas.
+- Na região, separador **Attributes**: **Settings > Stack** ligado.
 
 **Deve ver** (▶ Run): os quatro cartões, a linha da pontualidade e as barras empilhadas. Mudar o tipo de linha para Doméstico recalcula tudo.
 
 ## Passo 4. Página 2, Companhias
 
-**Create Page** > **Blank Page**: Number `2`, Name `Companhias`, **Navigation** > Create a new navigation menu entry = On.
+Na página inicial da aplicação, **Create Page** > **Blank Page**: **Page Number** `2`, **Name** `Companhias`, e ligar a entrada no menu de navegação (**Use Navigation** / *Create a new navigation menu entry*, conforme a versão). **Create Page** abre o Page Designer na página nova.
 
 ### 4.1 Gráfico das 15 maiores
 
@@ -389,9 +435,14 @@ git push
 
 **Deve ver:** o push terminar com `main -> main`. A partir daqui, sempre que mudares páginas no App Builder, repete o passo 10 para guardar a versão nova.
 
-Para provar que a exportação funciona: `python3 apex.py install` deve terminar com `Importing the APEX application from apex/f100.sql` sem erros.
+O `python3 apex.py install` importa `apex/f100.sql` **só se a aplicação ainda não existir** no workspace (por exemplo, numa máquina nova). Assim nunca apaga por engano páginas feitas no App Builder e ainda não exportadas. Para substituir de propósito a aplicação pela versão exportada: `python3 apex.py install --replace-app`.
+
+Regra para duas máquinas: **exportar e fazer push antes de mudar de máquina**; na outra, `git pull` e `python3 apex.py install --replace-app`.
 
 ## Dicas
+
+- **Os filtros não mudam nada:** abre a página 0, separador do raio. Se **Events > Change** não tiver a ação **Aplicar filtros**, falta o passo 2.3. Se a página recarrega mas a lista volta a `(todos)`, confirma **Session State > Storage** = `Per Session (Persistent)` nos três itens. Para ver os valores guardados: na aplicação a correr, barra de baixo > **Session**.
+- **Os filtros aparecem no login:** falta `9999` na condição da região **Filtros** (passo 2.1).
 
 - **Ver o SQL de uma região a correr:** Run > barra de baixo **Debug**, depois **View Debug**.
 - **Erro `ORA-20200` numa região:** um filtro chegou num formato diferente de `YYYY-MM`. Confirma que o **Return Value** das listas de meses é `month_label`.

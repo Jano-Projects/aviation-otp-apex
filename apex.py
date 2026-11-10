@@ -4,7 +4,8 @@
 Needs the database of aviation-otp-observatory running (python tasks.py up there).
 
     python apex.py up        start ORDS; the first time it installs APEX and ORDS (20-30 min)
-    python apex.py install   schema OTP_APP, views, API package, REST API, APEX workspace
+    python apex.py install   schema OTP_APP, views, API package, REST API, APEX workspace,
+                             and the application from apex/f<id>.sql if it is not there yet
     python apex.py check     call the REST API and print what it returns
     python apex.py refresh   rebuild the star schema through the REST API (POST)
     python apex.py urls      print the addresses to open in the browser
@@ -313,6 +314,13 @@ def cmd_up(args: argparse.Namespace) -> None:
     fail(f"ORDS did not answer after {args.timeout}s. See: python apex.py logs")
 
 
+def app_exists(cfg: dict[str, str], app_id: str) -> bool:
+    if not app_id.isdigit():
+        return False
+    return sql_value(cfg, "select count(*) from apex_applications "
+                          f"where workspace = 'OTP' and application_id = {int(app_id)}") == "1"
+
+
 def cmd_install(args: argparse.Namespace) -> None:
     cfg = env()
     require_database(cfg)
@@ -341,7 +349,12 @@ def cmd_install(args: argparse.Namespace) -> None:
     check(sqlplus(cfg, app_logon(cfg), script("db/rest/otp_api_v1.sql")), "Publishing the REST API")
 
     export = app_export()
-    if export:
+    app_id = export.stem[1:] if export else None
+    if export and app_exists(cfg, app_id) and not args.replace_app:
+        # Never overwrite pages built in App Builder with an older export by accident.
+        info(f"Application {app_id} already exists in workspace OTP: not importing {export.relative_to(ROOT)}")
+        print("   To replace it with the exported version: python apex.py install --replace-app")
+    elif export:
         info(f"Importing the APEX application from {export.relative_to(ROOT)}")
         head = ("whenever sqlerror exit failure rollback\n"
                 "begin\n"
@@ -418,7 +431,10 @@ def main() -> None:
     p.add_argument("--timeout", type=int, default=3600, help="seconds to wait for ORDS (default 3600)")
     p.set_defaults(func=cmd_up)
 
-    sub.add_parser("install", help="schema OTP_APP, views, API, REST, APEX workspace").set_defaults(func=cmd_install)
+    p = sub.add_parser("install", help="schema OTP_APP, views, API, REST, APEX workspace, application")
+    p.add_argument("--replace-app", action="store_true",
+                   help="import apex/f<id>.sql even if the application already exists (replaces it)")
+    p.set_defaults(func=cmd_install)
     sub.add_parser("check", help="call the REST API").set_defaults(func=cmd_check)
 
     p = sub.add_parser("refresh", help="rebuild the star schema through the REST API")
