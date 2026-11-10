@@ -135,12 +135,24 @@ def ords_answers(cfg: dict[str, str]) -> bool:
         return False
 
 
+def ords_configured(cfg: dict[str, str]) -> bool:
+    """True when the config volume already holds a database pool (ORDS was installed before)."""
+    if run(["docker", "volume", "inspect", CONFIG_VOLUME], capture_output=True).returncode != 0:
+        return False
+    image = cfg.get("ORDS_IMAGE", "container-registry.oracle.com/database/ords:24.4.0")
+    probe = ["docker", "run", "--rm", "-v", f"{CONFIG_VOLUME}:/etc/ords/config",
+             "--entrypoint", "test", image, "-f", "/etc/ords/config/databases/default/pool.xml"]
+    return run(probe, capture_output=True).returncode == 0
+
+
 # --------------------------------------------------------------------------- commands
 def cmd_up(args: argparse.Namespace) -> None:
     cfg = env()
     require_database(cfg)
 
-    first_time = run(["docker", "volume", "inspect", CONFIG_VOLUME], capture_output=True).returncode != 0
+    # Not "does the volume exist": an interrupted first start leaves the volume behind
+    # without any configuration, and ORDS would then wait forever for a connection.
+    first_time = not ords_configured(cfg)
     if first_time:
         # ORDS reads the connection once, installs ORDS and APEX, then deletes the file.
         SECRETS_DIR.mkdir(exist_ok=True)
@@ -156,7 +168,9 @@ def cmd_up(args: argparse.Namespace) -> None:
 
     check(run(["docker", "compose", "up", "-d"]), "docker compose up")
 
-    deadline = time.monotonic() + args.timeout
+    started = time.monotonic()
+    deadline = started + args.timeout
+    hinted = False
     while time.monotonic() < deadline:
         if ords_answers(cfg):
             leftover = SECRETS_DIR / "conn_string.txt"
@@ -165,7 +179,11 @@ def cmd_up(args: argparse.Namespace) -> None:
             info(f"ORDS is ready: {base_url(cfg)}/")
             return
         time.sleep(15)
-        print("   ...", flush=True)
+        minutes = int((time.monotonic() - started) // 60)
+        print(f"   ... {minutes} min", flush=True)
+        if not first_time and minutes >= 3 and not hinted:
+            hinted = True
+            print("   ORDS should start in seconds once installed. See why with: python apex.py logs")
     fail(f"ORDS did not answer after {args.timeout}s. See: python apex.py logs")
 
 
