@@ -14,9 +14,16 @@ All notable changes to this project. The format follows
 - Indicator views with additive measures; `pkg_app_api` (`to_month`, `refresh_mart`).
 - REST API `/ords/otp/api/v1/`: months, airlines, airports, hours, weekdays, runs, `POST mart/refresh`.
 - APEX workspace `OTP` with a developer account; import of `apex/f*.sql` on install.
-- Guides in Portuguese: installation, and building the APEX pages region by region.
+- Guides in Portuguese: installation, how it works, and building the APEX pages region by region
+  (with how the Page Designer is organised and how filters reach SQL).
+- `docs/architecture.md`: components, versions and why, first-start sequence, security.
+- APEX application export `apex/f100.sql`: global page with filters, dashboard page.
+- `apex.py install --replace-app`; without it, `install` imports the export only when the
+  application does not exist yet, so App Builder work is never overwritten.
 
 ### Fixed
+- Pages guide: the filters region is hidden on the login page too (`6,7,9999`), and step 2
+  creates the dynamic action from the Events tree.
 - `apex.py up` stops with a clear `sudo chown` hint when `.cache` belongs to root (a folder
   Docker created for a bind mount), instead of a Python traceback.
 - ORDS 24.4 cannot install into Oracle AI Database 26ai (the current `gvenzl/oracle-free:23`,

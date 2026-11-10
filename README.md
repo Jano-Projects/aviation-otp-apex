@@ -11,7 +11,7 @@ The observatory loads Brazil's official flight data into an Oracle star schema. 
 ```mermaid
 flowchart LR
     subgraph obs[aviation-otp-observatory]
-        DB[(Oracle 23ai Free<br/>schema OTP<br/>star schema + PL/SQL)]
+        DB[(Oracle AI Database 26ai Free<br/>schema OTP<br/>star schema + PL/SQL)]
     end
     subgraph app[aviation-otp-apex]
         ORDS[ORDS container<br/>:8181 → 8080]
@@ -36,19 +36,29 @@ Requirements: the observatory running with its star schema (`python tasks.py up`
 git clone https://github.com/Jano-Projects/aviation-otp-apex.git
 cd aviation-otp-apex
 python3 apex.py up        # first time: downloads and installs APEX 24.2, installs ORDS (20-30 min)
-python3 apex.py install   # schema OTP_APP, views, API package, REST API, APEX workspace OTP
+python3 apex.py install   # schema OTP_APP, views, API package, REST API, APEX workspace OTP, application
 python3 apex.py check     # call the REST API
 ```
 
 No Python packages are needed: `apex.py` uses only the standard library.
 
-**How the first start works.** `apex.py up` downloads Oracle APEX 24.2 (checksum-verified) into `.cache/`, installs it into the database with Oracle's `apexins.sql`, downloads ORDS 26.3.1 into `.cache/ords`, runs `ords install` (PL/SQL gateway proxied to `APEX_PUBLIC_USER`, configuration kept in a Docker volume) and only then starts the container, which serves APEX's static files from `.cache/apex/images`. Every step checks the real state first, so an interrupted start resumes where it stopped.
+**First start.** `apex.py up` downloads Oracle APEX 24.2 and ORDS 26.3.1 from Oracle into `.cache/`, installs APEX with Oracle's `apexins.sql` (10-20 min) and ORDS with `ords install`, then starts the container. Every step checks the real state first, so an interrupted start resumes where it stopped. Why these versions, and why ORDS runs from a zip inside the `database/ords:24.4.0` image: [docs/architecture.md](docs/architecture.md#versions).
 
-**Why ORDS 26.3.1 inside the 24.4.0 image.** The current `gvenzl/oracle-free:23` is Oracle AI Database 26ai (23.26), and ORDS 24.4 cannot install into it (`ORA-01403`: it looks for a product named `Oracle Database%`). The container therefore runs ORDS 26.3.1 from Oracle's zip, using the image only as its Java 17 runtime.
+Then open:
 
-**ORDS image pinned to 24.4.0.** Newer `database/ords` images are built on Oracle Linux 10, whose C library requires an x86-64-v3 CPU (AVX2). Many VirtualBox VMs do not expose AVX2, and the container then dies with `Fatal glibc error: CPU does not support x86-64-v3`. 24.4.0 runs on any x86-64 CPU; set `ORDS_IMAGE` in `.env` to use another tag.
+- the application: `http://localhost:8181/ords/r/otp/observatorio/home` (sign in with the developer account from `.env`, `DEV` by default);
+- App Builder, to change it: `http://localhost:8181/ords/`, choose Oracle APEX, workspace `OTP`.
 
-Then open `http://localhost:8181/ords/`, choose Oracle APEX and sign in to workspace `OTP` with the developer account from `.env` (`DEV` by default).
+## Versions
+
+Tested together on Debian 13 and Fedora VirtualBox VMs without AVX2:
+
+| Component | Version | Pinned in |
+|---|---|---|
+| Database (from aviation-otp-observatory) | Oracle AI Database 26ai Free 23.26.3 (`gvenzl/oracle-free:23`) | the observatory's `docker-compose.yml` |
+| Oracle APEX | 24.2 (`apex_24.2_en.zip`, SHA-256 checked) | `APEX_ZIP_URL` in `apex.py` |
+| ORDS | 26.3.1.303.1615 (Oracle's zip) | `ORDS_VERSION` in `apex.py` |
+| Container image (Java 17 runtime) | `container-registry.oracle.com/database/ords:24.4.0` | `docker-compose.yml`, `ORDS_IMAGE` in `.env` |
 
 ## REST API
 
@@ -81,8 +91,10 @@ The POST endpoint has no authentication: the container only listens on `127.0.0.
 │   ├── app/                  indicator views, pkg_app_api (actions)
 │   └── rest/                 ORDS REST module otp.api.v1
 ├── .cache/                   APEX installation files (downloaded, git-ignored)
-├── apex/                     the exported APEX application (f<id>.sql), imported by install
-├── docs/pt/                  guides in Portuguese
+├── apex/                     the exported APEX application (f100.sql), imported by install
+├── docs/
+│   ├── architecture.md       design, versions, first-start sequence, security
+│   └── pt/                   guides in Portuguese: installation, how it works, building the pages
 └── CHANGELOG.md              what changed in each version
 ```
 
@@ -91,8 +103,19 @@ The POST endpoint has no authentication: the container only listens on `127.0.0.
 | Step | Scope | Status |
 |---|---|---|
 | 1 | APEX 24.2 + ORDS 26.3.1 in Docker, schema `OTP_APP`, views, REST API, workspace | ✅ |
-| 2 | APEX pages: dashboard, airlines, airports map, hours and weekdays, load history, actions | in progress |
+| 2 | APEX pages: filters and dashboard ✅; airlines, airports map, hours and weekdays, routes, load history, actions | in progress |
 | 3 | REST API secured with an ORDS privilege and OAuth2 | planned |
+
+## Documentation
+
+| Document | For |
+|---|---|
+| [docs/architecture.md](docs/architecture.md) | how the parts fit, versions and why, first-start sequence, security |
+| [docs/pt/guia-instalacao.md](docs/pt/guia-instalacao.md) | installing from scratch, block by block (Portuguese) |
+| [docs/pt/como-funciona.md](docs/pt/como-funciona.md) | what each file does and why (Portuguese) |
+| [docs/pt/guia-paginas-apex.md](docs/pt/guia-paginas-apex.md) | building every APEX page, region by region (Portuguese) |
+| [apex/README.md](apex/README.md) | the exported application and how to import or export it |
+| [CHANGELOG.md](CHANGELOG.md) | what changed |
 
 ## License
 
