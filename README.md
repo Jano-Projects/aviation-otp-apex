@@ -14,7 +14,7 @@ flowchart LR
         DB[(Oracle 23ai Free<br/>schema OTP<br/>star schema + PL/SQL)]
     end
     subgraph app[aviation-otp-apex]
-        ORDS[ORDS + APEX<br/>container :8181]
+        ORDS[ORDS container<br/>:8181 → 8080]
         APP[(schema OTP_APP<br/>views, pkg_app_api,<br/>REST module)]
     end
     APP -- "SELECT grants,<br/>EXECUTE pkg_mart" --> DB
@@ -35,12 +35,14 @@ Requirements: the observatory running with its star schema (`python tasks.py up`
 ```bash
 git clone https://github.com/Jano-Projects/aviation-otp-apex.git
 cd aviation-otp-apex
-python3 apex.py up        # first time: ORDS installs ORDS and APEX into the database (15-30 min)
+python3 apex.py up        # first time: downloads and installs APEX 24.2, installs ORDS (20-30 min)
 python3 apex.py install   # schema OTP_APP, views, API package, REST API, APEX workspace OTP
 python3 apex.py check     # call the REST API
 ```
 
 No Python packages are needed: `apex.py` uses only the standard library.
+
+**How the first start works.** `apex.py up` downloads Oracle APEX 24.2 (checksum-verified) into `.cache/`, installs it into the database with Oracle's `apexins.sql`, runs `ords install` (PL/SQL gateway proxied to `APEX_PUBLIC_USER`, configuration kept in a Docker volume) and only then starts the plain `database/ords` container, which serves APEX's static files from `.cache/apex/images`. Every step checks the real state first, so an interrupted start resumes where it stopped.
 
 **ORDS image pinned to 24.4.0.** Newer `database/ords` images are built on Oracle Linux 10, whose C library requires an x86-64-v3 CPU (AVX2). Many VirtualBox VMs do not expose AVX2, and the container then dies with `Fatal glibc error: CPU does not support x86-64-v3`. 24.4.0 runs on any x86-64 CPU; set `ORDS_IMAGE` in `.env` to use another tag.
 
@@ -70,12 +72,13 @@ The POST endpoint has no authentication: the container only listens on `127.0.0.
 ## Project layout
 
 ```
-├── docker-compose.yml        ORDS + APEX container, on the observatory's network
+├── docker-compose.yml        ORDS container, on the observatory's network
 ├── apex.py                   command runner: up, install, check, refresh, urls, sql, logs, down
 ├── db/
 │   ├── admin/                schema OTP_APP + grants, APEX workspace, invalid-object check
 │   ├── app/                  indicator views, pkg_app_api (actions)
 │   └── rest/                 ORDS REST module otp.api.v1
+├── .cache/                   APEX installation files (downloaded, git-ignored)
 ├── apex/                     the exported APEX application (f<id>.sql), imported by install
 ├── docs/pt/                  guides in Portuguese
 └── CHANGELOG.md              what changed in each version
