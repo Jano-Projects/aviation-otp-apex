@@ -13,7 +13,7 @@ services:
       - "127.0.0.1:${ORDS_PORT:-8181}:8181"
     volumes:
       # conn_string.txt (written by "python apex.py up"); the container deletes it after use.
-      - ./.secrets:/opt/oracle/variables
+      - ./.secrets:/opt/oracle/variables:z
       # ORDS configuration created on the first start, kept across restarts.
       - ords_config:/etc/ords/config
     networks:
