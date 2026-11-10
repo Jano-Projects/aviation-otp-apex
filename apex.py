@@ -20,6 +20,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -283,6 +284,12 @@ def install_ords(cfg: dict[str, str]) -> None:
 def cmd_up(args: argparse.Namespace) -> None:
     cfg = env()
     require_database(cfg)
+
+    # A folder created by Docker (a bind mount of a path that did not exist yet)
+    # belongs to root, and nothing can be downloaded into it afterwards.
+    if CACHE_DIR.exists() and not os.access(CACHE_DIR, os.W_OK):
+        fail(f"{CACHE_DIR} is not writable (probably created by Docker as root). "
+             f"Fix with: sudo chown -R $USER:$USER {CACHE_DIR}")
 
     # Each step checks the real state, so an interrupted first start simply resumes.
     ensure_apex_files()

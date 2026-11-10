@@ -17,6 +17,8 @@ All notable changes to this project. The format follows
 - Guides in Portuguese: installation, and building the APEX pages region by region.
 
 ### Fixed
+- `apex.py up` stops with a clear `sudo chown` hint when `.cache` belongs to root (a folder
+  Docker created for a bind mount), instead of a Python traceback.
 - ORDS 24.4 cannot install into Oracle AI Database 26ai (the current `gvenzl/oracle-free:23`,
   23.26.x): its first check selects `PRODUCT_COMPONENT_VERSION where product like
   'Oracle Database%'`, but 26ai is named 'Oracle AI Database', so it fails with ORA-01403.

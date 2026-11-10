@@ -90,7 +90,7 @@ The POST endpoint has no authentication: the container only listens on `127.0.0.
 
 | Step | Scope | Status |
 |---|---|---|
-| 1 | ORDS + APEX in Docker, schema `OTP_APP`, views, REST API, workspace | first run in progress |
+| 1 | APEX 24.2 + ORDS 26.3.1 in Docker, schema `OTP_APP`, views, REST API, workspace | ✅ |
 | 2 | APEX pages: dashboard, airlines, airports map, hours and weekdays, load history, actions | in progress |
 | 3 | REST API secured with an ORDS privilege and OAuth2 | planned |
 
