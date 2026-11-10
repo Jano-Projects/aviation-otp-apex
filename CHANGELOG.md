@@ -17,6 +17,11 @@ All notable changes to this project. The format follows
 - Guides in Portuguese: installation, and building the APEX pages region by region.
 
 ### Fixed
+- ORDS 24.4 cannot install into Oracle AI Database 26ai (the current `gvenzl/oracle-free:23`,
+  23.26.x): its first check selects `PRODUCT_COMPONENT_VERSION where product like
+  'Oracle Database%'`, but 26ai is named 'Oracle AI Database', so it fails with ORA-01403.
+  ORDS 26.3.1 is now downloaded from Oracle's zip into `.cache/ords` and run with the Java 17
+  of the `database/ords:24.4.0` image, which still works without AVX2.
 - ORDS image pinned to `24.4.0`: newer images need an x86-64-v3 CPU (AVX2), which many
   VirtualBox VMs do not expose (`Fatal glibc error: CPU does not support x86-64-v3`).
 - `apex.py up` detects an interrupted first start (configuration volume left empty) and passes

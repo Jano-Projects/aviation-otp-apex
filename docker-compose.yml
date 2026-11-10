@@ -6,9 +6,13 @@ name: otp-apex
 
 services:
   ords:
-    # Plain ORDS image: it only serves. Installing APEX and ORDS is done by apex.py.
+    # The image is used as a Java 17 runtime that works without AVX2. The ORDS that
+    # runs is 26.3.1, from Oracle's zip in .cache/ords (see ORDS_VERSION in apex.py):
+    # the ORDS 24.4 inside the image does not recognise Oracle AI Database 26ai.
     image: ${ORDS_IMAGE:-container-registry.oracle.com/database/ords:24.4.0}
     container_name: otp-ords
+    entrypoint: ["bash", "/opt/ords-app/bin/ords"]
+    command: ["--config", "/etc/ords/config", "serve"]
     ports:
       # 127.0.0.1 only: the app and its API are not exposed to the local network.
       # ORDS listens on 8080 inside the container.
@@ -19,6 +23,8 @@ services:
       # APEX static files (JavaScript, CSS, icons), served as /i/.
       # ",z": SELinux label so the container may read the folder (Fedora).
       - ./.cache/apex/images:/opt/oracle/apex/images:ro,z
+      # ORDS 26.3.1, unzipped by apex.py.
+      - ./.cache/ords:/opt/ords-app:ro,z
     networks:
       - otp
 

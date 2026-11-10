@@ -42,7 +42,9 @@ python3 apex.py check     # call the REST API
 
 No Python packages are needed: `apex.py` uses only the standard library.
 
-**How the first start works.** `apex.py up` downloads Oracle APEX 24.2 (checksum-verified) into `.cache/`, installs it into the database with Oracle's `apexins.sql`, runs `ords install` (PL/SQL gateway proxied to `APEX_PUBLIC_USER`, configuration kept in a Docker volume) and only then starts the plain `database/ords` container, which serves APEX's static files from `.cache/apex/images`. Every step checks the real state first, so an interrupted start resumes where it stopped.
+**How the first start works.** `apex.py up` downloads Oracle APEX 24.2 (checksum-verified) into `.cache/`, installs it into the database with Oracle's `apexins.sql`, downloads ORDS 26.3.1 into `.cache/ords`, runs `ords install` (PL/SQL gateway proxied to `APEX_PUBLIC_USER`, configuration kept in a Docker volume) and only then starts the container, which serves APEX's static files from `.cache/apex/images`. Every step checks the real state first, so an interrupted start resumes where it stopped.
+
+**Why ORDS 26.3.1 inside the 24.4.0 image.** The current `gvenzl/oracle-free:23` is Oracle AI Database 26ai (23.26), and ORDS 24.4 cannot install into it (`ORA-01403`: it looks for a product named `Oracle Database%`). The container therefore runs ORDS 26.3.1 from Oracle's zip, using the image only as its Java 17 runtime.
 
 **ORDS image pinned to 24.4.0.** Newer `database/ords` images are built on Oracle Linux 10, whose C library requires an x86-64-v3 CPU (AVX2). Many VirtualBox VMs do not expose AVX2, and the container then dies with `Fatal glibc error: CPU does not support x86-64-v3`. 24.4.0 runs on any x86-64 CPU; set `ORDS_IMAGE` in `.env` to use another tag.
 
