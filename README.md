@@ -1,5 +1,14 @@
 # Aviation OTP Observatory: APEX web app
 
+![Oracle APEX 24.2](https://img.shields.io/badge/Oracle%20APEX-24.2-F80000)
+![ORDS 26.3.1](https://img.shields.io/badge/ORDS-26.3.1-F80000)
+![Oracle AI Database 26ai Free](https://img.shields.io/badge/Oracle%20AI%20Database-26ai%20Free-F80000)
+![REST API](https://img.shields.io/badge/REST%20API-JSON-0A7BBB)
+![Docker](https://img.shields.io/badge/Docker-Compose-2496ED)
+![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B%20(stdlib%20only)-3776AB)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Data: Aviation OTP Observatory](https://img.shields.io/badge/data-aviation--otp--observatory-555555)](https://github.com/Jano-Projects/aviation-otp-observatory)
+
 **A local web application and REST API on top of the [Aviation OTP Observatory](https://github.com/Jano-Projects/aviation-otp-observatory), built with Oracle APEX and Oracle REST Data Services (ORDS).**
 
 > 🇵🇹 *Aplicação web local do Observatório de Pontualidade Aérea, em Oracle APEX e ORDS. Guias em português: [instalação](docs/pt/guia-instalacao.md) e [construção das páginas](docs/pt/guia-paginas-apex.md).*
