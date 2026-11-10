@@ -133,6 +133,7 @@ A ordem importa: o ORDS precisa da base ligada e da rede do Observatório.
 | `network otp-observatory_default not found` | O Observatório não está ligado. `python3 tasks.py up` no outro repositório. |
 | `up` fica muito tempo em `... N min` na instalação do APEX | Normal (10 a 20 min). O progresso está em `.cache/apexins.log` (`tail -f .cache/apexins.log` noutro terminal). |
 | `APEX was not installed` | As últimas linhas do registo aparecem no ecrã; o registo completo está em `.cache/apexins.log`. Corrige a causa e corre `python3 apex.py up` de novo. |
+| `PermissionError: ... .cache/...` ou `.cache ... is not writable` | A pasta `.cache` foi criada pelo Docker como `root`. `sudo chown -R $USER:$USER .cache` e `python3 apex.py up` de novo. |
 | `ORA-01403: no data found` / `ORA-06512: at line 4` no `ords install` | Está a correr o ORDS 24.4 da imagem, que não reconhece a 26ai. `git pull` (o `apex.py` atual usa o ORDS 26.3.1 de `.cache/ords`) e `python3 apex.py up` de novo. |
 | `Installing ORDS failed` | Confirma que `ORACLE_PASSWORD` no `.env` é igual ao do Observatório. Depois `python3 apex.py up` de novo. |
 | `ORA-20100` no install | O esquema estrela não existe. No Observatório: `python3 tasks.py install` e `python3 tasks.py mart`. |
