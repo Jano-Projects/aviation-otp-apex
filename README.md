@@ -30,7 +30,7 @@ flowchart LR
 
 ## Quick start
 
-Requirements: the observatory running with its star schema (`python tasks.py up`, phase 2.2 or later), Docker, Python 3.11+, about 1.5 GB more free RAM.
+Requirements: the observatory running with its star schema (`python tasks.py up`, phase 2.2 or later), Docker, Python 3.11+, about 1.5 GB more free RAM. Set up for Debian 13 and Fedora (SELinux enforcing), including VirtualBox VMs.
 
 ```bash
 git clone https://github.com/Jano-Projects/aviation-otp-apex.git
@@ -41,6 +41,8 @@ python3 apex.py check     # call the REST API
 ```
 
 No Python packages are needed: `apex.py` uses only the standard library.
+
+**ORDS image pinned to 24.4.0.** Newer `database/ords` images are built on Oracle Linux 10, whose C library requires an x86-64-v3 CPU (AVX2). Many VirtualBox VMs do not expose AVX2, and the container then dies with `Fatal glibc error: CPU does not support x86-64-v3`. 24.4.0 runs on any x86-64 CPU; set `ORDS_IMAGE` in `.env` to use another tag.
 
 Then open `http://localhost:8181/ords/`, choose Oracle APEX and sign in to workspace `OTP` with the developer account from `.env` (`DEV` by default).
 
@@ -75,14 +77,15 @@ The POST endpoint has no authentication: the container only listens on `127.0.0.
 │   ├── app/                  indicator views, pkg_app_api (actions)
 │   └── rest/                 ORDS REST module otp.api.v1
 ├── apex/                     the exported APEX application (f<id>.sql), imported by install
-└── docs/pt/                  guides in Portuguese
+├── docs/pt/                  guides in Portuguese
+└── CHANGELOG.md              what changed in each version
 ```
 
 ## Roadmap
 
 | Step | Scope | Status |
 |---|---|---|
-| 1 | ORDS + APEX in Docker, schema `OTP_APP`, views, REST API, workspace | ✅ |
+| 1 | ORDS + APEX in Docker, schema `OTP_APP`, views, REST API, workspace | first run in progress |
 | 2 | APEX pages: dashboard, airlines, airports map, hours and weekdays, load history, actions | in progress |
 | 3 | REST API secured with an ORDS privilege and OAuth2 | planned |
 

@@ -1,4 +1,4 @@
-# Guia de instalação (Debian 13)
+# Guia de instalação (Debian 13 ou Fedora)
 
 Este guia põe a aplicação web no ar na tua máquina, em blocos: copia o bloco, cola no terminal (Ctrl+Shift+V) e confere o que **deve ver**.
 
@@ -10,6 +10,7 @@ Pré-requisito: o [Observatório](https://github.com/Jano-Projects/aviation-otp-
 
 ```bash
 cd ~/projetos/aviation-otp-observatory
+source .venv/bin/activate
 python3 tasks.py up
 python3 tasks.py status
 docker network ls | grep otp-observatory
@@ -28,41 +29,38 @@ df -h /
 
 **Deve ver:** pelo menos 1,5 GB em `available` na memória e 5 GB livres no disco. Se a memória estiver curta, desliga a VM e aumenta a RAM no VirtualBox (Definições > Sistema), 6 GB ou mais é o confortável.
 
-## Bloco 3. Criar o repositório vazio no GitHub
-
-```bash
-gh repo create Jano-Projects/aviation-otp-apex --public \
-  --description "Local web app and REST API for the Aviation OTP Observatory (Oracle APEX + ORDS)"
-```
-
-**Deve ver:** `✓ Created repository Jano-Projects/aviation-otp-apex on GitHub`.
-
-## Bloco 4. Descompactar e publicar
-
-Assumindo que o zip está em `~/Downloads`:
+## Bloco 3. Obter o projeto
 
 ```bash
 cd ~/projetos
-unzip ~/Downloads/aviation-otp-apex.zip
+git clone https://github.com/Jano-Projects/aviation-otp-apex.git
 cd aviation-otp-apex
-git init -b main
-git add .
-git commit -m "ORDS + APEX container, OTP_APP schema, indicator views, REST API v1"
-git remote add origin https://github.com/Jano-Projects/aviation-otp-apex.git
-git push -u origin main
 ```
 
-**Deve ver:** o push terminar com `main -> main`.
+**Deve ver:** `ls` mostra `apex.py`, `db`, `docs`, `docker-compose.yml`, `README.md`...
 
-## Bloco 5. Subir o ORDS (primeira vez: 15 a 30 minutos)
+Não é preciso ambiente Python próprio: o `apex.py` só usa a biblioteca padrão do Python.
+
+## Bloco 4. Subir o ORDS (primeira vez: 15 a 30 minutos)
 
 ```bash
 python3 apex.py up
 ```
 
-**Deve ver:** primeiro o download da imagem do ORDS (cerca de 1 GB), depois linhas `...` a cada 15 segundos enquanto o ORDS instala o próprio ORDS e o APEX dentro da base. Termina com `ORDS is ready: http://localhost:8181/ords/`.
+**Deve ver:** primeiro o download da imagem do ORDS (cerca de 1 GB), depois a mensagem `First start: it installs ORDS and APEX...` e uma linha `... N min` a cada 15 segundos, enquanto o ORDS instala o próprio ORDS e o APEX dentro da base. Termina com `ORDS is ready: http://localhost:8181/ords/`.
+
+Confirma noutro terminal que a imagem é a fixada no projeto e que não há erros:
+
+```bash
+docker inspect --format '{{.Config.Image}}' otp-ords
+docker logs --tail 10 otp-ords
+```
+
+A imagem tem de terminar em `ords:24.4.0` (ver *Porquê a versão 24.4.0* abaixo).
 
 O que está a acontecer: o `apex.py` grava a ligação à base (`CONN_STRING`) num ficheiro em `.secrets/`, o contentor lê esse ficheiro, instala tudo e apaga-o. Nas vezes seguintes o `up` demora segundos, porque a configuração fica guardada no volume `otp-apex_ords_config`.
+
+**Porquê a versão 24.4.0.** As imagens mais recentes do ORDS usam o Oracle Linux 10, que exige um processador com instruções AVX2 (o nível *x86-64-v3*). Muitas VMs do VirtualBox não as têm, sobretudo quando o Windows do computador tem o Hyper-V ligado. Para saber se a tua tem: `grep -c avx2 /proc/cpuinfo` (`0` = não tem). A 24.4.0 funciona com ou sem AVX2; quem tiver AVX2 pode usar outra versão mudando `ORDS_IMAGE` no `.env`.
 
 Para acompanhar a instalação noutro terminal:
 
@@ -70,7 +68,7 @@ Para acompanhar a instalação noutro terminal:
 cd ~/projetos/aviation-otp-apex && python3 apex.py logs
 ```
 
-## Bloco 6. Instalar a camada da aplicação
+## Bloco 5. Instalar a camada da aplicação
 
 ```bash
 python3 apex.py install
@@ -86,7 +84,7 @@ python3 apex.py install
 
 O comando pode ser repetido sem problema: tudo é `create or replace` ou verifica se já existe.
 
-## Bloco 7. Testar a API REST
+## Bloco 6. Testar a API REST
 
 ```bash
 python3 apex.py check
@@ -95,7 +93,7 @@ curl -s "http://localhost:8181/ords/otp/api/v1/airlines?line_type=N" | python3 -
 
 **Deve ver:** a tabela de meses (voos, % pontualidade, % cancelados) e, no `curl`, um JSON com `"items": [...]` das companhias em voos domésticos.
 
-## Bloco 8. Testar a ação (reconstruir um mês)
+## Bloco 7. Testar a ação (reconstruir um mês)
 
 ```bash
 python3 apex.py refresh --month 2026-07
@@ -103,7 +101,7 @@ python3 apex.py refresh --month 2026-07
 
 **Deve ver:** `HTTP 200: {"months_refreshed":1}`. No Observatório, `python3 tasks.py status` mostra uma nova execução `MART` no registo de cargas.
 
-## Bloco 9. Abrir o APEX
+## Bloco 8. Abrir o APEX
 
 ```bash
 python3 apex.py urls
@@ -139,6 +137,10 @@ A ordem importa: o ORDS precisa da base ligada e da rede do Observatório.
 | `network otp-observatory_default not found` | O Observatório não está ligado. `python3 tasks.py up` no outro repositório. |
 | `up` fica muito tempo em `...` | Normal na primeira vez (até 30 min). Vê o progresso com `python3 apex.py logs`. |
 | `ORA-20100` no install | O esquema estrela não existe. No Observatório: `python3 tasks.py install` e `python3 tasks.py mart`. |
-| `ORA-20101` no install | O APEX não ficou instalado. Vê `python3 apex.py logs`; se a instalação falhou, `python3 apex.py down`, `docker volume rm otp-apex_ords_config` e repete o bloco 5. |
-| Página `404` em `/ords/otp/...` | O módulo REST não foi publicado. Repete o bloco 6. |
+| `ORA-20101` no install | O APEX não ficou instalado. Vê `python3 apex.py logs`; se a instalação falhou, `python3 apex.py down`, `docker volume rm otp-apex_ords_config` e repete o bloco 4. |
+| Página `404` em `/ords/otp/...` | O módulo REST não foi publicado. Repete o bloco 5. |
+| `Fatal glibc error: CPU does not support x86-64-v3` nos logs | A imagem do ORDS não é a 24.4.0. Confirma `ORDS_IMAGE` no `.env` (ou apaga essa linha para usar a do `docker-compose.yml`), depois `python3 apex.py down`, `docker volume rm otp-apex_ords_config` e o bloco 4. |
+| `up` só mostra `...` sem minutos e nunca acaba | Versão antiga do `apex.py`, que não detetava um primeiro arranque interrompido. `git pull`, depois `python3 apex.py down`, `docker volume rm otp-apex_ords_config` e o bloco 4. |
+| `Permission denied` em `/opt/oracle/variables` (Fedora) | O SELinux bloqueou a pasta `.secrets`. Confirma `:z` no fim dessa linha do `docker-compose.yml` (`git pull`). |
+| `permission denied ... docker.sock` | O teu utilizador ainda não está no grupo `docker` desta sessão. Confirma com `groups`; se não aparecer, reinicia a máquina. |
 | A VM fica lenta | Pouca RAM. Aumenta a memória da VM ou desliga outras aplicações. |
