@@ -51,7 +51,7 @@ Na primeira vez, o `up` faz quatro coisas, cada uma com a sua mensagem:
 
 1. `Downloading Oracle APEX 24.2`: descarrega os ficheiros de instalação do APEX (cerca de 200 MB, do site da Oracle) para `.cache/`, confere o checksum e descompacta.
 2. `Installing Oracle APEX 24.2 into the database`: corre o script oficial `apexins.sql` dentro da base. Demora 10 a 20 minutos e mostra `... N min` a cada 30 segundos; o registo completo fica em `.cache/apexins.log`.
-3. `Installing ORDS into the database`: o `ords install` cria os utilizadores do ORDS na base, liga o APEX (*PL/SQL gateway*) e grava a configuração no volume `otp-apex_ords_config`.
+3. `Downloading ORDS 26.3.1` e `Installing ORDS into the database`: descarrega o ORDS (cerca de 100 MB) para `.cache/ords`, e o `ords install` cria os utilizadores do ORDS na base, liga o APEX (*PL/SQL gateway*) e grava a configuração no volume `otp-apex_ords_config`.
 4. `Starting ORDS`: liga o contentor e espera que responda.
 
 **Deve ver no fim:** `ORDS is ready: http://localhost:8181/ords/`.
@@ -59,6 +59,8 @@ Na primeira vez, o `up` faz quatro coisas, cada uma com a sua mensagem:
 Cada passo verifica primeiro o estado real (o APEX está instalado? a configuração existe?), por isso, se o `up` for interrompido, basta corrê-lo de novo: continua onde parou. Nas vezes seguintes demora segundos.
 
 **Porquê a versão 24.4.0.** As imagens mais recentes do ORDS usam o Oracle Linux 10, que exige um processador com instruções AVX2 (o nível *x86-64-v3*). Muitas VMs do VirtualBox não as têm, sobretudo quando o Windows do computador tem o Hyper-V ligado. Para saber se a tua tem: `grep -c avx2 /proc/cpuinfo` (`0` = não tem). A 24.4.0 funciona com ou sem AVX2; quem tiver AVX2 pode usar outra versão mudando `ORDS_IMAGE` no `.env`.
+
+**Porquê o ORDS 26.3.1 num contentor 24.4.0.** A base atual é a Oracle AI Database 26ai (23.26). O ORDS 24.4, que vem dentro da imagem, procura um produto chamado `Oracle Database%` na view `PRODUCT_COMPONENT_VERSION`; a 26ai chama-se `Oracle AI Database`, e a instalação falha com `ORA-01403: no data found`. O ORDS 26.3.1 conhece a 26ai e funciona com o Java 17 que a imagem 24.4.0 já traz, e essa imagem não exige AVX2. Por isso a imagem fica só como ambiente Java, e o ORDS que corre vem do ZIP oficial.
 
 **Porquê instalar o APEX à parte.** A imagem `database/ords` só serve o ORDS: arranca vazia, na porta 8080, à espera de configuração. A imagem que fazia tudo sozinha (`database/ords-developer`) pede login no registo da Oracle. Instalar com os scripts oficiais (`apexins.sql` e `ords install`) dá o mesmo resultado, sem conta e sem depender de comportamento escondido na imagem.
 
@@ -131,6 +133,7 @@ A ordem importa: o ORDS precisa da base ligada e da rede do Observatório.
 | `network otp-observatory_default not found` | O Observatório não está ligado. `python3 tasks.py up` no outro repositório. |
 | `up` fica muito tempo em `... N min` na instalação do APEX | Normal (10 a 20 min). O progresso está em `.cache/apexins.log` (`tail -f .cache/apexins.log` noutro terminal). |
 | `APEX was not installed` | As últimas linhas do registo aparecem no ecrã; o registo completo está em `.cache/apexins.log`. Corrige a causa e corre `python3 apex.py up` de novo. |
+| `ORA-01403: no data found` / `ORA-06512: at line 4` no `ords install` | Está a correr o ORDS 24.4 da imagem, que não reconhece a 26ai. `git pull` (o `apex.py` atual usa o ORDS 26.3.1 de `.cache/ords`) e `python3 apex.py up` de novo. |
 | `Installing ORDS failed` | Confirma que `ORACLE_PASSWORD` no `.env` é igual ao do Observatório. Depois `python3 apex.py up` de novo. |
 | `ORA-20100` no install | O esquema estrela não existe. No Observatório: `python3 tasks.py install` e `python3 tasks.py mart`. |
 | `ORA-20101` no install | O APEX não está instalado. Corre `python3 apex.py up` primeiro. |

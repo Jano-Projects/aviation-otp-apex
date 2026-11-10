@@ -44,6 +44,17 @@ APEX_ZIP_SHA256 = "94e6a624cfe80272041094543c6ccd56b87333d8ad856100802a1cb0f91cd
 APEX_ZIP = CACHE_DIR / "apex_24.2_en.zip"
 APEX_FILES = CACHE_DIR / "apex"          # unzipped; images/ is served by ORDS as /i/
 
+# ORDS 26.3.1, run from Oracle's zip. ORDS 24.4 (the one inside the container image)
+# cannot install into Oracle AI Database 26ai: its first check looks for a product
+# named 'Oracle Database%' in PRODUCT_COMPONENT_VERSION, and 26ai calls itself
+# 'Oracle AI Database', so the check fails with ORA-01403. The image is kept only as
+# a Java 17 runtime that works without AVX2; ORDS 26.3 supports Java 17, 21 and 25.
+ORDS_VERSION = "26.3.1.303.1615"
+ORDS_ZIP_URL = f"https://download.oracle.com/otn_software/java/ords/ords-{ORDS_VERSION}.zip"
+ORDS_ZIP = CACHE_DIR / f"ords-{ORDS_VERSION}.zip"
+ORDS_FILES = CACHE_DIR / "ords"          # mounted in the container as /opt/ords-app
+ORDS_CMD = "bash /opt/ords-app/bin/ords --config /etc/ords/config"
+
 
 def app_export() -> Path | None:
     """The exported APEX application (apex/f<id>.sql), if it has been exported yet."""
@@ -190,6 +201,36 @@ def ensure_apex_files() -> None:
         archive.extractall(CACHE_DIR)      # creates .cache/apex/
 
 
+def download(url: str, target: Path, what: str) -> None:
+    info(f"Downloading {what}: {url}")
+    partial = target.with_suffix(".part")
+    with urllib.request.urlopen(url, timeout=120) as response, open(partial, "wb") as out:
+        shutil.copyfileobj(response, out, length=1024 * 1024)
+    partial.rename(target)
+
+
+def ensure_ords_files() -> None:
+    """Downloads (once) and unzips ORDS into .cache/ords; a version marker detects upgrades."""
+    marker = ORDS_FILES / ".version"
+    if marker.exists() and marker.read_text(encoding="utf-8").strip() == ORDS_VERSION:
+        return
+    CACHE_DIR.mkdir(exist_ok=True)
+    if not ORDS_ZIP.exists():
+        download(ORDS_ZIP_URL, ORDS_ZIP, f"ORDS {ORDS_VERSION} (about 100 MB)")
+    info(f"Unzipping ORDS {ORDS_VERSION}")
+    if ORDS_FILES.exists():
+        shutil.rmtree(ORDS_FILES)
+    try:
+        with zipfile.ZipFile(ORDS_ZIP) as archive:
+            archive.extractall(ORDS_FILES)
+    except zipfile.BadZipFile:
+        ORDS_ZIP.unlink()
+        fail("The ORDS download is corrupted. Run the command again.")
+    if not (ORDS_FILES / "bin" / "ords").exists():
+        fail(f"Unexpected ORDS zip layout: {ORDS_FILES}/bin/ords not found.")
+    marker.write_text(ORDS_VERSION + "\n", encoding="utf-8")
+
+
 def install_apex(cfg: dict[str, str]) -> None:
     """Installs APEX into FREEPDB1 with Oracle's own script, apexins.sql (10-20 minutes)."""
     db = cfg.get("DB_CONTAINER", "otp-oracle")
@@ -224,14 +265,13 @@ def install_apex(cfg: dict[str, str]) -> None:
 def install_ords(cfg: dict[str, str]) -> None:
     """Installs ORDS into the database and writes its configuration into the volume."""
     info("Installing ORDS into the database and configuring it (2-5 minutes)")
+    # With APEX installed and APEX_PUBLIC_USER present, "ords install" configures the
+    # PL/SQL gateway for APEX by itself (proxied mode), so no gateway options are given.
     command = (
-        'ORDS=$(command -v ords || echo /opt/oracle/ords/bin/ords); '
-        '"$ORDS" --config /etc/ords/config install '
-        '--admin-user SYS --proxy-user '
-        '--db-hostname oracle --db-port 1521 --db-servicename FREEPDB1 '
-        '--gateway-mode proxied --gateway-user APEX_PUBLIC_USER '
-        '--feature-sdw true --password-stdin '
-        '&& "$ORDS" --config /etc/ords/config config set standalone.static.path /opt/oracle/apex/images'
+        f"{ORDS_CMD} install --admin-user SYS --proxy-user "
+        "--db-hostname oracle --db-port 1521 --db-servicename FREEPDB1 "
+        "--feature-sdw true --password-stdin "
+        f"&& {ORDS_CMD} config set standalone.static.path /opt/oracle/apex/images"
     )
     passwords = f"{cfg['ORACLE_PASSWORD']}\n{cfg.get('ORDS_PUBLIC_PASSWORD', 'Ords_Public_2026')}\n"
     check(run(["docker", "compose", "run", "--rm", "--no-deps", "-T", "--entrypoint", "bash",
@@ -246,6 +286,7 @@ def cmd_up(args: argparse.Namespace) -> None:
 
     # Each step checks the real state, so an interrupted first start simply resumes.
     ensure_apex_files()
+    ensure_ords_files()
     if not apex_installed(cfg):
         install_apex(cfg)
     if not ords_configured(cfg):
