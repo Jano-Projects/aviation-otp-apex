@@ -33,14 +33,14 @@ prompt APPLICATION 100 - Observatório de Pontualidade Aérea
 -- Application Export:
 --   Application:     100
 --   Name:            Observatório de Pontualidade Aérea
---   Date and Time:   11:09 Wednesday November 11, 2026
+--   Date and Time:   18:53 Wednesday November 11, 2026
 --   Exported By:     DEV
 --   Flashback:       0
 --   Export Type:     Application Export
---     Pages:                      4
+--     Pages:                      6
 --       Items:                    6
 --       Processes:                4
---       Regions:                  9
+--       Regions:                 15
 --       Buttons:                  1
 --       Dynamic Actions:          1
 --     Shared Components:
@@ -49,7 +49,7 @@ prompt APPLICATION 100 - Observatório de Pontualidade Aérea
 --       Navigation:
 --         Lists:                  2
 --         Breadcrumbs:            1
---           Entries:              2
+--           Entries:              4
 --       Security:
 --         Authentication:         1
 --         Authorization:          1
@@ -108,7 +108,7 @@ wwv_imp_workspace.create_flow(
 ,p_substitution_value_01=>unistr('Observat\00F3rio de Pontualidade A\00E9rea')
 ,p_file_prefix => nvl(wwv_flow_application_install.get_static_app_file_prefix,'')
 ,p_files_version=>6
-,p_version_scn=>4569488
+,p_version_scn=>4635555
 ,p_print_server_type=>'NATIVE'
 ,p_file_storage=>'DB'
 ,p_is_pwa=>'Y'
@@ -144,7 +144,7 @@ wwv_flow_imp_shared.create_list(
  p_id=>wwv_flow_imp.id(3805787979649848)
 ,p_name=>'Navigation Menu'
 ,p_list_status=>'PUBLIC'
-,p_version_scn=>4562275
+,p_version_scn=>4631926
 );
 wwv_flow_imp_shared.create_list_item(
  p_id=>wwv_flow_imp.id(3817246028650139)
@@ -162,6 +162,24 @@ wwv_flow_imp_shared.create_list_item(
 ,p_list_item_icon=>'fa-file-o'
 ,p_list_item_current_type=>'COLON_DELIMITED_PAGE_LIST'
 ,p_list_item_current_for_pages=>'2'
+);
+wwv_flow_imp_shared.create_list_item(
+ p_id=>wwv_flow_imp.id(4607952655291935)
+,p_list_item_display_sequence=>30
+,p_list_item_link_text=>'Aeroportos'
+,p_list_item_link_target=>'f?p=&APP_ID.:3:&APP_SESSION.::&DEBUG.:::'
+,p_list_item_icon=>'fa-file-o'
+,p_list_item_current_type=>'COLON_DELIMITED_PAGE_LIST'
+,p_list_item_current_for_pages=>'3'
+);
+wwv_flow_imp_shared.create_list_item(
+ p_id=>wwv_flow_imp.id(4614560909981240)
+,p_list_item_display_sequence=>40
+,p_list_item_link_text=>unistr('Hor\00E1rios')
+,p_list_item_link_target=>'f?p=&APP_ID.:5:&APP_SESSION.::&DEBUG.:::'
+,p_list_item_icon=>'fa-file-o'
+,p_list_item_current_type=>'COLON_DELIMITED_PAGE_LIST'
+,p_list_item_current_for_pages=>'5'
 );
 end;
 /
@@ -910,6 +928,18 @@ wwv_flow_imp_shared.create_menu_option(
 ,p_short_name=>'Companhias'
 ,p_link=>'f?p=&APP_ID.:2:&APP_SESSION.::&DEBUG.:::'
 ,p_page_id=>2
+);
+wwv_flow_imp_shared.create_menu_option(
+ p_id=>wwv_flow_imp.id(4608764308291965)
+,p_short_name=>'Aeroportos'
+,p_link=>'f?p=&APP_ID.:3:&APP_SESSION.::&DEBUG.:::'
+,p_page_id=>3
+);
+wwv_flow_imp_shared.create_menu_option(
+ p_id=>wwv_flow_imp.id(4615307016981270)
+,p_short_name=>unistr('Hor\00E1rios')
+,p_link=>'f?p=&APP_ID.:5:&APP_SESSION.::&DEBUG.:::'
+,p_page_id=>5
 );
 end;
 /
@@ -1676,6 +1706,441 @@ wwv_flow_imp_page.create_page_plug(
 ,p_menu_id=>wwv_flow_imp.id(3805299629649843)
 ,p_plug_source_type=>'NATIVE_BREADCRUMB'
 ,p_menu_template_id=>4072363345357175094
+);
+end;
+/
+prompt --application/pages/page_00003
+begin
+wwv_flow_imp_page.create_page(
+ p_id=>3
+,p_name=>'Aeroportos'
+,p_alias=>'AEROPORTOS'
+,p_step_title=>'Aeroportos'
+,p_autocomplete_on_off=>'OFF'
+,p_page_template_options=>'#DEFAULT#'
+,p_protection_level=>'C'
+,p_page_component_map=>'18'
+);
+wwv_flow_imp_page.create_page_plug(
+ p_id=>wwv_flow_imp.id(4003482869974134)
+,p_plug_name=>'Aeroportos de origem'
+,p_title=>'Aeroportos de origem'
+,p_region_template_options=>'#DEFAULT#:t-Region--scrollBody'
+,p_component_template_options=>'#DEFAULT#'
+,p_plug_template=>4072358936313175081
+,p_plug_display_sequence=>20
+,p_location=>null
+,p_lazy_loading=>true
+,p_plug_source_type=>'NATIVE_MAP_REGION'
+);
+wwv_flow_imp_page.create_map_region(
+ p_id=>wwv_flow_imp.id(4003561818974135)
+,p_region_id=>wwv_flow_imp.id(4003482869974134)
+,p_height=>640
+,p_navigation_bar_type=>'FULL'
+,p_navigation_bar_position=>'END'
+,p_init_position_zoom_type=>'STATIC'
+,p_init_position_lon_static=>'-52'
+,p_init_position_lat_static=>'-14'
+,p_init_zoomlevel_static=>'3'
+,p_layer_messages_position=>'BELOW'
+,p_legend_position=>'END'
+,p_features=>'SCALE_BAR:INFINITE_MAP:RECTANGLE_ZOOM'
+);
+wwv_flow_imp_page.create_map_region_layer(
+ p_id=>wwv_flow_imp.id(4003669693974136)
+,p_map_region_id=>wwv_flow_imp.id(4003561818974135)
+,p_name=>'Aeroportos'
+,p_layer_type=>'POINT'
+,p_display_sequence=>10
+,p_location=>'LOCAL'
+,p_query_type=>'SQL'
+,p_layer_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select airport_icao, airport_name, city, state_uf, latitude, longitude,',
+'       sum(departures) as departures,',
+'       round(100 * sum(on_time) / nullif(sum(measurable), 0), 1) as on_time_pct',
+'  from v_otp_airport_month',
+' where latitude is not null',
+'   and month_start between nvl(pkg_app_api.to_month(:P0_MONTH_FROM), date ''1900-01-01'')',
+'                       and nvl(pkg_app_api.to_month(:P0_MONTH_TO),   date ''9999-12-01'')',
+'   and (:P0_LINE_TYPE is null or line_type = :P0_LINE_TYPE)',
+' group by airport_icao, airport_name, city, state_uf, latitude, longitude'))
+,p_has_spatial_index=>false
+,p_geometry_column_data_type=>'LONLAT_COLUMNS'
+,p_longitude_column=>'LONGITUDE'
+,p_latitude_column=>'LATITUDE'
+,p_point_display_type=>'SVG'
+,p_point_svg_shape=>'Default'
+,p_feature_clustering=>false
+,p_tooltip_adv_formatting=>true
+,p_tooltip_html_expr=>unistr('<b>&AIRPORT_ICAO. &AIRPORT_NAME.</b><br>&CITY. / &STATE_UF.<br>&DEPARTURES. partidas \00B7 &ON_TIME_PCT. % no hor\00E1rio')
+,p_info_window_adv_formatting=>false
+,p_allow_hide=>true
+);
+wwv_flow_imp_page.create_page_plug(
+ p_id=>wwv_flow_imp.id(4003721661974137)
+,p_plug_name=>'Todos os aeroportos'
+,p_title=>'Todos os aeroportos'
+,p_region_template_options=>'#DEFAULT#:t-IRR-region--hideHeader js-addHiddenHeadingRoleDesc'
+,p_component_template_options=>'#DEFAULT#'
+,p_plug_template=>2100526641005906379
+,p_plug_display_sequence=>30
+,p_query_type=>'SQL'
+,p_plug_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select airport_icao as "ICAO", airport_name as "Aeroporto", city as "Cidade",',
+unistr('       state_uf as "UF", country_name as "Pa\00EDs",'),
+'       sum(departures) as "Partidas",',
+'       round(100 * sum(on_time)   / nullif(sum(measurable), 0), 1) as "Pontualidade %",',
+'       round(100 * sum(cancelled) / nullif(sum(departures), 0), 1) as "Cancelados %"',
+'  from v_otp_airport_month',
+' where month_start between nvl(pkg_app_api.to_month(:P0_MONTH_FROM), date ''1900-01-01'')',
+'                       and nvl(pkg_app_api.to_month(:P0_MONTH_TO),   date ''9999-12-01'')',
+'   and (:P0_LINE_TYPE is null or line_type = :P0_LINE_TYPE)',
+' group by airport_icao, airport_name, city, state_uf, country_name',
+' order by 6 desc'))
+,p_plug_source_type=>'NATIVE_IR'
+,p_prn_content_disposition=>'ATTACHMENT'
+,p_prn_units=>'INCHES'
+,p_prn_paper_size=>'LETTER'
+,p_prn_width=>11
+,p_prn_height=>8.5
+,p_prn_orientation=>'HORIZONTAL'
+,p_prn_page_header=>'Todos os aeroportos'
+,p_prn_page_header_font_color=>'#000000'
+,p_prn_page_header_font_family=>'Helvetica'
+,p_prn_page_header_font_weight=>'normal'
+,p_prn_page_header_font_size=>'12'
+,p_prn_page_footer_font_color=>'#000000'
+,p_prn_page_footer_font_family=>'Helvetica'
+,p_prn_page_footer_font_weight=>'normal'
+,p_prn_page_footer_font_size=>'12'
+,p_prn_header_bg_color=>'#EEEEEE'
+,p_prn_header_font_color=>'#000000'
+,p_prn_header_font_family=>'Helvetica'
+,p_prn_header_font_weight=>'bold'
+,p_prn_header_font_size=>'10'
+,p_prn_body_bg_color=>'#FFFFFF'
+,p_prn_body_font_color=>'#000000'
+,p_prn_body_font_family=>'Helvetica'
+,p_prn_body_font_weight=>'normal'
+,p_prn_body_font_size=>'10'
+,p_prn_border_width=>.5
+,p_prn_page_header_alignment=>'CENTER'
+,p_prn_page_footer_alignment=>'CENTER'
+,p_prn_border_color=>'#666666'
+);
+wwv_flow_imp_page.create_worksheet(
+ p_id=>wwv_flow_imp.id(4003840068974138)
+,p_max_row_count=>'1000000'
+,p_pagination_type=>'ROWS_X_TO_Y'
+,p_pagination_display_pos=>'BOTTOM_RIGHT'
+,p_report_list_mode=>'TABS'
+,p_lazy_loading=>false
+,p_show_detail_link=>'N'
+,p_show_notify=>'Y'
+,p_download_formats=>'CSV:HTML:XLSX:PDF'
+,p_enable_mail_download=>'Y'
+,p_owner=>'DEV'
+,p_internal_uid=>4003840068974138
+);
+wwv_flow_imp_page.create_worksheet_column(
+ p_id=>wwv_flow_imp.id(4003930511974139)
+,p_db_column_name=>'ICAO'
+,p_display_order=>10
+,p_column_identifier=>'A'
+,p_column_label=>'Icao'
+,p_column_type=>'STRING'
+,p_heading_alignment=>'LEFT'
+,p_use_as_row_header=>'N'
+);
+wwv_flow_imp_page.create_worksheet_column(
+ p_id=>wwv_flow_imp.id(4004074781974140)
+,p_db_column_name=>'Aeroporto'
+,p_display_order=>20
+,p_column_identifier=>'B'
+,p_column_label=>'Aeroporto'
+,p_column_type=>'STRING'
+,p_heading_alignment=>'LEFT'
+,p_use_as_row_header=>'N'
+);
+wwv_flow_imp_page.create_worksheet_column(
+ p_id=>wwv_flow_imp.id(4004146978974141)
+,p_db_column_name=>'Cidade'
+,p_display_order=>30
+,p_column_identifier=>'C'
+,p_column_label=>'Cidade'
+,p_column_type=>'STRING'
+,p_heading_alignment=>'LEFT'
+,p_use_as_row_header=>'N'
+);
+wwv_flow_imp_page.create_worksheet_column(
+ p_id=>wwv_flow_imp.id(4004255140974142)
+,p_db_column_name=>'UF'
+,p_display_order=>40
+,p_column_identifier=>'D'
+,p_column_label=>'Uf'
+,p_column_type=>'STRING'
+,p_heading_alignment=>'LEFT'
+,p_use_as_row_header=>'N'
+);
+wwv_flow_imp_page.create_worksheet_column(
+ p_id=>wwv_flow_imp.id(4004330655974143)
+,p_db_column_name=>unistr('Pa\00EDs')
+,p_display_order=>50
+,p_column_identifier=>'E'
+,p_column_label=>unistr('Pa\00EDs')
+,p_column_type=>'STRING'
+,p_heading_alignment=>'LEFT'
+,p_use_as_row_header=>'N'
+);
+wwv_flow_imp_page.create_worksheet_column(
+ p_id=>wwv_flow_imp.id(4004434954974144)
+,p_db_column_name=>'Partidas'
+,p_display_order=>60
+,p_column_identifier=>'F'
+,p_column_label=>'Partidas'
+,p_column_type=>'NUMBER'
+,p_heading_alignment=>'RIGHT'
+,p_column_alignment=>'RIGHT'
+,p_format_mask=>'999G999G990'
+,p_use_as_row_header=>'N'
+);
+wwv_flow_imp_page.create_worksheet_column(
+ p_id=>wwv_flow_imp.id(4004531775974145)
+,p_db_column_name=>'Pontualidade %'
+,p_display_order=>70
+,p_column_identifier=>'G'
+,p_column_label=>'Pontualidade %'
+,p_column_type=>'NUMBER'
+,p_heading_alignment=>'RIGHT'
+,p_column_alignment=>'RIGHT'
+,p_use_as_row_header=>'N'
+);
+wwv_flow_imp_page.create_worksheet_column(
+ p_id=>wwv_flow_imp.id(4004690255974146)
+,p_db_column_name=>'Cancelados %'
+,p_display_order=>80
+,p_column_identifier=>'H'
+,p_column_label=>'Cancelados %'
+,p_column_type=>'NUMBER'
+,p_heading_alignment=>'RIGHT'
+,p_column_alignment=>'RIGHT'
+,p_use_as_row_header=>'N'
+);
+wwv_flow_imp_page.create_worksheet_rpt(
+ p_id=>wwv_flow_imp.id(4613543146349297)
+,p_application_user=>'APXWS_DEFAULT'
+,p_report_seq=>10
+,p_report_alias=>'46136'
+,p_status=>'PUBLIC'
+,p_is_default=>'Y'
+,p_report_columns=>unistr('ICAO:Aeroporto:Cidade:UF:Pa\00EDs:Partidas:Pontualidade %:Cancelados %')
+);
+wwv_flow_imp_page.create_page_plug(
+ p_id=>wwv_flow_imp.id(4608257518291954)
+,p_plug_name=>'Breadcrumb'
+,p_region_template_options=>'#DEFAULT#:t-BreadcrumbRegion--useBreadcrumbTitle'
+,p_component_template_options=>'#DEFAULT#'
+,p_plug_template=>2531463326621247859
+,p_plug_display_sequence=>10
+,p_plug_display_point=>'REGION_POSITION_01'
+,p_menu_id=>wwv_flow_imp.id(3805299629649843)
+,p_plug_source_type=>'NATIVE_BREADCRUMB'
+,p_menu_template_id=>4072363345357175094
+);
+end;
+/
+prompt --application/pages/page_00005
+begin
+wwv_flow_imp_page.create_page(
+ p_id=>5
+,p_name=>unistr('Hor\00E1rios')
+,p_alias=>unistr('HOR\00C1RIOS')
+,p_step_title=>unistr('Hor\00E1rios')
+,p_autocomplete_on_off=>'OFF'
+,p_page_template_options=>'#DEFAULT#'
+,p_protection_level=>'C'
+,p_page_component_map=>'04'
+);
+wwv_flow_imp_page.create_page_plug(
+ p_id=>wwv_flow_imp.id(4004766580974147)
+,p_plug_name=>'Pontualidade por hora da partida prevista'
+,p_title=>'Pontualidade por hora da partida prevista'
+,p_region_template_options=>'#DEFAULT#:t-Region--scrollBody'
+,p_component_template_options=>'#DEFAULT#'
+,p_escape_on_http_output=>'Y'
+,p_plug_template=>4072358936313175081
+,p_plug_display_sequence=>20
+,p_location=>null
+,p_plug_source_type=>'NATIVE_JET_CHART'
+);
+wwv_flow_imp_page.create_jet_chart(
+ p_id=>wwv_flow_imp.id(4004810105974148)
+,p_region_id=>wwv_flow_imp.id(4004766580974147)
+,p_chart_type=>'bar'
+,p_height=>'400'
+,p_animation_on_display=>'auto'
+,p_animation_on_data_change=>'auto'
+,p_orientation=>'vertical'
+,p_data_cursor=>'auto'
+,p_data_cursor_behavior=>'auto'
+,p_hover_behavior=>'dim'
+,p_stack=>'off'
+,p_connect_nulls=>'Y'
+,p_sorting=>'label-asc'
+,p_fill_multi_series_gaps=>true
+,p_zoom_and_scroll=>'off'
+,p_tooltip_rendered=>'Y'
+,p_show_series_name=>true
+,p_show_group_name=>true
+,p_show_value=>true
+,p_legend_rendered=>'off'
+);
+wwv_flow_imp_page.create_jet_chart_series(
+ p_id=>wwv_flow_imp.id(4004980547974149)
+,p_chart_id=>wwv_flow_imp.id(4004810105974148)
+,p_seq=>10
+,p_name=>'Pontualidade %'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select lpad(hour_key, 2, ''0'') || ''h'' as hour_label,',
+'       round(100 * sum(on_time) / nullif(sum(measurable), 0), 1) as on_time_pct,',
+'       sum(flights) as flights',
+'  from v_otp_hour_month',
+' where month_start between nvl(pkg_app_api.to_month(:P0_MONTH_FROM), date ''1900-01-01'')',
+'                       and nvl(pkg_app_api.to_month(:P0_MONTH_TO),   date ''9999-12-01'')',
+'   and (:P0_LINE_TYPE is null or line_type = :P0_LINE_TYPE)',
+' group by hour_key',
+' order by hour_key'))
+,p_items_value_column_name=>'ON_TIME_PCT'
+,p_items_label_column_name=>'HOUR_LABEL'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+);
+wwv_flow_imp_page.create_jet_chart_axis(
+ p_id=>wwv_flow_imp.id(4005068792974150)
+,p_chart_id=>wwv_flow_imp.id(4004810105974148)
+,p_axis=>'x'
+,p_is_rendered=>'on'
+,p_format_scaling=>'auto'
+,p_scaling=>'linear'
+,p_baseline_scaling=>'zero'
+,p_major_tick_rendered=>'on'
+,p_minor_tick_rendered=>'off'
+,p_tick_label_rendered=>'on'
+,p_tick_label_rotation=>'auto'
+,p_tick_label_position=>'outside'
+);
+wwv_flow_imp_page.create_jet_chart_axis(
+ p_id=>wwv_flow_imp.id(4615711410988501)
+,p_chart_id=>wwv_flow_imp.id(4004810105974148)
+,p_axis=>'y'
+,p_is_rendered=>'on'
+,p_format_type=>'decimal'
+,p_decimal_places=>0
+,p_format_scaling=>'none'
+,p_scaling=>'linear'
+,p_baseline_scaling=>'zero'
+,p_position=>'auto'
+,p_major_tick_rendered=>'on'
+,p_minor_tick_rendered=>'off'
+,p_tick_label_rendered=>'on'
+);
+wwv_flow_imp_page.create_page_plug(
+ p_id=>wwv_flow_imp.id(4614851527981262)
+,p_plug_name=>'Breadcrumb'
+,p_region_template_options=>'#DEFAULT#:t-BreadcrumbRegion--useBreadcrumbTitle'
+,p_component_template_options=>'#DEFAULT#'
+,p_plug_template=>2531463326621247859
+,p_plug_display_sequence=>10
+,p_plug_display_point=>'REGION_POSITION_01'
+,p_menu_id=>wwv_flow_imp.id(3805299629649843)
+,p_plug_source_type=>'NATIVE_BREADCRUMB'
+,p_menu_template_id=>4072363345357175094
+);
+wwv_flow_imp_page.create_page_plug(
+ p_id=>wwv_flow_imp.id(4615901551988503)
+,p_plug_name=>'Pontualidade por dia da semana'
+,p_title=>'Pontualidade por dia da semana'
+,p_region_template_options=>'#DEFAULT#:t-Region--scrollBody'
+,p_component_template_options=>'#DEFAULT#'
+,p_escape_on_http_output=>'Y'
+,p_plug_template=>4072358936313175081
+,p_plug_display_sequence=>30
+,p_plug_new_grid_row=>false
+,p_location=>null
+,p_plug_source_type=>'NATIVE_JET_CHART'
+);
+wwv_flow_imp_page.create_jet_chart(
+ p_id=>wwv_flow_imp.id(4616077863988504)
+,p_region_id=>wwv_flow_imp.id(4615901551988503)
+,p_chart_type=>'bar'
+,p_height=>'400'
+,p_animation_on_display=>'auto'
+,p_animation_on_data_change=>'auto'
+,p_orientation=>'vertical'
+,p_data_cursor=>'auto'
+,p_data_cursor_behavior=>'auto'
+,p_hover_behavior=>'dim'
+,p_stack=>'off'
+,p_connect_nulls=>'Y'
+,p_sorting=>'label-asc'
+,p_fill_multi_series_gaps=>true
+,p_zoom_and_scroll=>'off'
+,p_tooltip_rendered=>'Y'
+,p_show_series_name=>true
+,p_show_group_name=>true
+,p_show_value=>true
+,p_legend_rendered=>'off'
+);
+wwv_flow_imp_page.create_jet_chart_series(
+ p_id=>wwv_flow_imp.id(4616149124988505)
+,p_chart_id=>wwv_flow_imp.id(4616077863988504)
+,p_seq=>10
+,p_name=>'Pontualidade %'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select day_name_pt,',
+'       round(100 * sum(on_time) / nullif(sum(measurable), 0), 1) as on_time_pct',
+'  from v_otp_weekday_month',
+' where month_start between nvl(pkg_app_api.to_month(:P0_MONTH_FROM), date ''1900-01-01'')',
+'                       and nvl(pkg_app_api.to_month(:P0_MONTH_TO),   date ''9999-12-01'')',
+'   and (:P0_LINE_TYPE is null or line_type = :P0_LINE_TYPE)',
+' group by iso_day_of_week, day_name_pt',
+' order by iso_day_of_week'))
+,p_items_value_column_name=>'ON_TIME_PCT'
+,p_items_label_column_name=>'DAY_NAME_PT'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+);
+wwv_flow_imp_page.create_jet_chart_axis(
+ p_id=>wwv_flow_imp.id(4616247306988506)
+,p_chart_id=>wwv_flow_imp.id(4616077863988504)
+,p_axis=>'x'
+,p_is_rendered=>'on'
+,p_format_scaling=>'auto'
+,p_scaling=>'linear'
+,p_baseline_scaling=>'zero'
+,p_major_tick_rendered=>'on'
+,p_minor_tick_rendered=>'off'
+,p_tick_label_rendered=>'on'
+,p_tick_label_rotation=>'auto'
+,p_tick_label_position=>'outside'
+);
+wwv_flow_imp_page.create_jet_chart_axis(
+ p_id=>wwv_flow_imp.id(4616389243988507)
+,p_chart_id=>wwv_flow_imp.id(4616077863988504)
+,p_axis=>'y'
+,p_is_rendered=>'on'
+,p_format_type=>'decimal'
+,p_decimal_places=>0
+,p_format_scaling=>'none'
+,p_scaling=>'linear'
+,p_baseline_scaling=>'zero'
+,p_position=>'auto'
+,p_major_tick_rendered=>'on'
+,p_minor_tick_rendered=>'off'
+,p_tick_label_rendered=>'on'
 );
 end;
 /
