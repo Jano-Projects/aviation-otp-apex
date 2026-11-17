@@ -18,6 +18,13 @@ All notable changes to this project. The format follows
   (with how the Page Designer is organised and how filters reach SQL).
 - `docs/architecture.md`: components, versions and why, first-start sequence, security.
 - APEX application export `apex/f100.sql`: global page with filters, dashboard page.
+- APEX pages 2 (airlines), 3 (airports map) and 5 (hours and weekdays).
+
+### Changed
+- Documentation lists only the pages the application has (0, 1, 2, 3, 5 and login). The planned
+  routes, load history and actions pages were dropped; load runs and the star-schema rebuild stay
+  available through the REST API. The pages guide no longer has steps for them, and the filters
+  region condition is documented as `9999` only.
 - `apex.py install --replace-app`; without it, `install` imports the export only when the
   application does not exist yet, so App Builder work is never overwritten.
 

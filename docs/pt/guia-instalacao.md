@@ -76,7 +76,7 @@ python3 apex.py install
 - o espaço de trabalho APEX `OTP` e o utilizador `DEV`;
 - as views, o `pkg_app_api` e `No invalid objects`;
 - `REST module otp.api.v1 published at /ords/otp/api/v1/`;
-- por fim, o aviso de que ainda não há `apex/f<id>.sql` (normal: as páginas ainda vão ser construídas).
+- por fim, `Importing the APEX application from apex/f100.sql` (numa máquina nova) ou o aviso de que a aplicação 100 já existe e não foi importada (para a substituir: `python3 apex.py install --replace-app`).
 
 O comando pode ser repetido sem problema: tudo é `create or replace` ou verifica se já existe.
 

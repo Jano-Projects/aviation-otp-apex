@@ -4,9 +4,9 @@ Este guia constrói a aplicação no App Builder, página a página. Cada regiã
 
 Pré-requisito: [guia de instalação](guia-instalacao.md) concluído (blocos 1 a 8) e sessão aberta no APEX com o utilizador `DEV`.
 
-Testado com APEX 24.2. Os passos 1 a 3 foram feitos e conferidos assim; os restantes seguem o mesmo método.
+Testado com APEX 24.2.
 
-> **Atalho:** se o repositório já tem `apex/f100.sql`, o `python3 apex.py install` importa a aplicação feita até aí. Este guia serve para a construir de raiz, perceber cada peça ou continuar as páginas que faltam.
+> **Atalho:** o repositório já tem `apex/f100.sql`, e o `python3 apex.py install` importa a aplicação completa. Este guia serve para a construir de raiz ou perceber cada peça.
 
 ## O que vamos construir
 
@@ -16,10 +16,10 @@ Testado com APEX 24.2. Os passos 1 a 3 foram feitos e conferidos assim; os resta
 | 1 | Painel | indicadores-chave, pontualidade por mês, cancelamentos por mês |
 | 2 | Companhias | gráfico das 15 maiores e relatório interativo |
 | 3 | Aeroportos | mapa dos aeroportos de origem e relatório interativo |
-| 4 | Horários | pontualidade por hora e por dia da semana |
-| 5 | Rotas | relatório interativo das rotas |
-| 6 | Cargas | histórico das cargas do Observatório |
-| 7 | Ações | reconstruir o esquema estrela |
+| 5 | Horários | pontualidade por hora e por dia da semana |
+| 9999 | Login | criada pelo assistente da aplicação |
+
+Não há página 4: os Horários ficaram com o número 5. As rotas, o histórico de cargas e a reconstrução do esquema estrela não têm páginas na aplicação; os dados de cargas e a reconstrução estão disponíveis na API REST (`GET /runs` e `POST /mart/refresh`, ver o README).
 
 ## Como é o Page Designer
 
@@ -87,9 +87,9 @@ A página 0 é desenhada dentro de todas as outras páginas. Os filtros ficam l�
 1. Abrir a página **0 - Global Page** (o assistente de criação já a cria; se não existir: **Create Page** > **Global Page**).
 2. Botão direito em **Body** > **Create Region**. À direita:
    - **Identification > Title:** `Filtros` · **Type:** `Static Content`
-   - **Server-side Condition > Type:** `Current Page is NOT in Comma Delimited List` · **Pages:** `6,7,9999`
+   - **Server-side Condition > Type:** `Current Page is NOT in Comma Delimited List` · **Pages:** `9999`
 
-A condição esconde os filtros nas páginas onde não fazem sentido: **9999** (Login), **6** (Cargas) e **7** (Ações). As páginas 6 e 7 ainda não existem neste ponto; uma condição que as menciona não dá erro e fica pronta para quando forem criadas.
+A condição esconde os filtros na página de login (**9999**), onde não fazem sentido.
 
 ### 2.2 Os três itens
 
@@ -297,9 +297,9 @@ select airport_icao as "ICAO", airport_name as "Aeroporto", city as "Cidade",
  order by 6 desc
 ```
 
-## Passo 6. Página 4, Horários
+## Passo 6. Página 5, Horários
 
-**Create Page** > **Blank Page**: Number `4`, Name `Horários`, com entrada no menu.
+**Create Page** > **Blank Page**: Number `5`, Name `Horários`, com entrada no menu.
 
 ### 6.1 Por hora da partida prevista
 
@@ -336,88 +336,7 @@ select day_name_pt,
 
 Label = `DAY_NAME_PT`, Value = `ON_TIME_PCT`.
 
-## Passo 7. Página 5, Rotas
-
-**Create Page** > **Blank Page**: Number `5`, Name `Rotas`, com entrada no menu. Região **Interactive Report**, **Title** `Rotas`:
-
-```sql
-select orig_icao || ' → ' || dest_icao as "Rota",
-       orig_city as "Origem", dest_city as "Destino",
-       sum(flights) as "Voos",
-       round(100 * sum(on_time)   / nullif(sum(measurable), 0), 1) as "Pontualidade %",
-       round(100 * sum(cancelled) / nullif(sum(flights), 0), 1)    as "Cancelados %"
-  from v_otp_route_month
- where month_start between nvl(pkg_app_api.to_month(:P0_MONTH_FROM), date '1900-01-01')
-                       and nvl(pkg_app_api.to_month(:P0_MONTH_TO),   date '9999-12-01')
-   and (:P0_LINE_TYPE is null or line_type = :P0_LINE_TYPE)
- group by orig_icao, orig_city, dest_icao, dest_city
-having sum(flights) >= 30
- order by 4 desc
-```
-
-O `having` deixa de fora rotas com menos de 30 voos no período, em que uma percentagem diz pouco.
-
-## Passo 8. Página 6, Cargas
-
-**Create Page** > **Blank Page**: Number `6`, Name `Cargas`, com entrada no menu. Região **Interactive Report**, **Title** `Histórico de cargas`:
-
-```sql
-select run_id as "Execução", src_file as "Origem", month_label as "Mês",
-       status as "Estado", started_at as "Início", finished_at as "Fim",
-       rows_staged as "Lidas", rows_loaded as "Carregadas",
-       rows_rejected as "Rejeitadas", rows_duplicate as "Duplicadas",
-       error_message as "Erro"
-  from v_load_runs
- order by run_id desc
-```
-
-A página 6 não mostra os filtros (condição do passo 2): o histórico não depende de mês nem de tipo de linha.
-
-## Passo 9. Página 7, Ações
-
-**Create Page** > **Blank Page**: Number `7`, Name `Ações`, com entrada no menu.
-
-1. Região **Static Content**, **Title** `Reconstruir o esquema estrela`. Texto (Source > HTML Code):
-
-```html
-<p>Recalcula a tabela de factos e as dimensões a partir dos voos carregados.
-Escolha um mês, ou deixe em branco para reconstruir todos (pode levar alguns minutos).</p>
-```
-
-2. Item `P7_MONTH`, **Select List**, Label `Mês`, LOV com o mesmo SQL de meses do passo 2, Null Display Value `(todos os meses)`.
-3. Botão: botão direito na região > **Create Button**: **Name** `REFRESH`, **Label** `Reconstruir`, **Hot** = On, **Action** = `Submit Page`.
-4. Processo: no separador **Processing** (ícone das engrenagens) > botão direito em **Processes** > **Create Process**:
-   - **Name:** `Reconstruir esquema estrela` · **Type:** `Execute Code`
-   - **PL/SQL Code:**
-
-```sql
-declare
-  l_months pls_integer;
-begin
-  l_months := pkg_app_api.refresh_mart(pkg_app_api.to_month(:P7_MONTH));
-  apex_application.g_print_success_message :=
-    'Esquema estrela reconstruído: ' || l_months || ' mês(es).';
-end;
-```
-
-   - **Server-side Condition** > When Button Pressed = `REFRESH`.
-   - **Error Message:** `Falhou a reconstrução: #SQLERRM#`
-
-5. Por baixo, uma região **Classic Report**, **Title** `Últimas execuções`, para ver o resultado logo a seguir:
-
-```sql
-select run_id as "Execução", src_file as "Origem", month_label as "Mês",
-       status as "Estado", started_at as "Início", rows_loaded as "Linhas"
-  from v_load_runs
- order by run_id desc
- fetch first 5 rows only
-```
-
-**Deve ver:** ao clicar em Reconstruir com `2026-07`, a mensagem verde `Esquema estrela reconstruído: 1 mês(es).` e uma nova linha `MART` em Últimas execuções.
-
-O `pkg_app_api.refresh_mart` faz `COMMIT`: na aplicação, o pedido HTTP é a unidade de trabalho. Os packages do Observatório continuam sem commit, como antes.
-
-## Passo 10. Exportar a aplicação para o repositório
+## Passo 7. Exportar a aplicação para o repositório
 
 Assim a aplicação passa a estar no GitHub e o `python3 apex.py install` reinstala-a em qualquer máquina.
 
@@ -429,11 +348,11 @@ Assim a aplicação passa a estar no GitHub e o `python3 apex.py install` reinst
 cd ~/projetos/aviation-otp-apex
 mv ~/Downloads/f100.sql apex/
 git add apex/f100.sql
-git commit -m "APEX application: dashboard, airlines, airports map, hours, routes, loads, actions"
+git commit -m "APEX application: dashboard, airlines, airports map, hours"
 git push
 ```
 
-**Deve ver:** o push terminar com `main -> main`. A partir daqui, sempre que mudares páginas no App Builder, repete o passo 10 para guardar a versão nova.
+**Deve ver:** o push terminar com `main -> main`. A partir daqui, sempre que mudares páginas no App Builder, repete o passo 7 para guardar a versão nova.
 
 O `python3 apex.py install` importa `apex/f100.sql` **só se a aplicação ainda não existir** no workspace (por exemplo, numa máquina nova). Assim nunca apaga por engano páginas feitas no App Builder e ainda não exportadas. Para substituir de propósito a aplicação pela versão exportada: `python3 apex.py install --replace-app`.
 

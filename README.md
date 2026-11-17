@@ -13,7 +13,7 @@
 
 > 🇵🇹 *Aplicação web local do Observatório de Pontualidade Aérea, em Oracle APEX e ORDS. Guias em português: [instalação](docs/pt/guia-instalacao.md) e [construção das páginas](docs/pt/guia-paginas-apex.md).*
 
-The observatory loads Brazil's official flight data into an Oracle star schema. This project puts a browser in front of it: punctuality by month, airline, airport, hour and day of the week, with filters, charts and a map, plus actions such as rebuilding the star schema. Everything also comes out as JSON through a REST API.
+The observatory loads Brazil's official flight data into an Oracle star schema. This project puts a browser in front of it: punctuality by month, airline, airport, hour and day of the week, with filters, charts and a map. Everything also comes out as JSON through a REST API, which can also list the observatory's load runs and rebuild the star schema.
 
 ## How it fits together
 
@@ -112,7 +112,7 @@ The POST endpoint has no authentication: the container only listens on `127.0.0.
 | Step | Scope | Status |
 |---|---|---|
 | 1 | APEX 24.2 + ORDS 26.3.1 in Docker, schema `OTP_APP`, views, REST API, workspace | ✅ |
-| 2 | APEX pages: filters and dashboard ✅; airlines, airports map, hours and weekdays, routes, load history, actions | in progress |
+| 2 | APEX pages: filters, dashboard, airlines, airports map, hours and weekdays | ✅ |
 | 3 | REST API secured with an ORDS privilege and OAuth2 | planned |
 
 ## Documentation
