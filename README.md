@@ -1,5 +1,6 @@
 # Aviation OTP Observatory: APEX web app
 
+[![CI](https://github.com/Jano-Projects/aviation-otp-apex/actions/workflows/ci.yml/badge.svg)](https://github.com/Jano-Projects/aviation-otp-apex/actions/workflows/ci.yml)
 ![Oracle APEX 24.2](https://img.shields.io/badge/Oracle%20APEX-24.2-F80000)
 ![ORDS 26.3.1](https://img.shields.io/badge/ORDS-26.3.1-F80000)
 ![Oracle AI Database 26ai Free](https://img.shields.io/badge/Oracle%20AI%20Database-26ai%20Free-F80000)
@@ -104,6 +105,8 @@ The POST endpoint has no authentication: the container only listens on `127.0.0.
 ├── docs/
 │   ├── architecture.md       design, versions, first-start sequence, security
 │   └── pt/                   guides in Portuguese: installation, how it works, building the pages
+├── tools/configure-github.sh repository settings on GitHub, as code
+├── .github/                  CI (static checks), Dependabot, issue and pull request templates
 └── CHANGELOG.md              what changed in each version
 ```
 
@@ -129,6 +132,10 @@ The POST endpoint has no authentication: the container only listens on `127.0.0.
 ## License
 
 MIT. Data © ANAC (open data); airport data from OurAirports (public domain).
+
+## Contributing
+
+Issues and pull requests are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md). Report security problems privately, as described in [SECURITY.md](SECURITY.md). Everyone taking part follows the [code of conduct](CODE_OF_CONDUCT.md).
 
 ## Author
 

@@ -5,6 +5,16 @@ All notable changes to this project. The format follows
 
 ## [Unreleased]
 
+### Repository
+- Contributing guide, security policy, code of conduct, issue and pull request templates.
+- Dependabot keeps GitHub Actions up to date with one grouped pull request a month, merged
+  automatically once CI passes.
+- `tools/configure-github.sh`: repository settings as code (protected `main` and release tags,
+  required CI checks, squash merges, secret scanning, CodeQL, labels).
+- Social preview image in `docs/images/`.
+- CI on every push: `apex.py` compiles and every command answers `--help`, `docker-compose.yml`
+  is valid, every SQL script `apex.py` runs exists, and `apex/f100.sql` is a complete export.
+
 ### Added
 - `python apex.py up`: downloads Oracle APEX 24.2 (checksum-verified), installs it with
   `apexins.sql`, installs ORDS with `ords install` (PL/SQL gateway for APEX) and starts the ORDS

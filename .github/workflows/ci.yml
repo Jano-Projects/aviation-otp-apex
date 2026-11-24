@@ -1,0 +1,45 @@
+name: CI
+
+# The full stack (Oracle + APEX + ORDS) needs the observatory's database and a 20-30 minute
+# APEX install, so CI checks what can be checked fast and reliably on every push.
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  static:
+    name: Static checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: apex.py compiles and its command line works (standard library only)
+        run: |
+          python -m py_compile apex.py
+          python apex.py --help >/dev/null
+          for c in up install check refresh urls sql logs down; do python apex.py "$c" --help >/dev/null; done
+
+      - name: docker-compose.yml is valid
+        run: |
+          cp .env.example .env
+          docker compose config --quiet
+
+      - name: Every SQL script referenced by apex.py exists
+        run: |
+          missing=0
+          for f in $(grep -oE '"(db|apex)/[A-Za-z0-9_/.-]+\.(sql|pks|pkb)"' apex.py | tr -d '"' | sort -u); do
+            [ -f "$f" ] || { echo "missing: $f"; missing=1; }
+          done
+          exit $missing
+
+      - name: The exported application is a complete APEX export
+        run: |
+          grep -q "wwv_flow_imp.import_begin" apex/f100.sql
+          grep -q "wwv_flow_imp.import_end" apex/f100.sql

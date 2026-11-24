@@ -1,0 +1,14 @@
+# Keeps GitHub Actions up to date. Each ecosystem gets one grouped
+# pull request a month, merged automatically once CI passes (dependabot-automerge.yml).
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: "CI"
+    labels: ["dependencies"]
